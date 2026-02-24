@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:app_links/app_links.dart';
+import 'dart:async';
+import 'dart:convert';
 import 'firebase_options.dart';
 import 'config.dart';
 
@@ -19,6 +20,37 @@ void main() async {
   runApp(const FusionApp());
 }
 
+// ── USER MODEL ─────────────────────────────────────────────────────────────
+class DiscordUser {
+  final String id;
+  final String username;
+  final String? avatar;
+  final String nickname;
+  final List<String> roles;
+  final String accessToken;
+
+  DiscordUser({
+    required this.id,
+    required this.username,
+    this.avatar,
+    required this.nickname,
+    required this.roles,
+    required this.accessToken,
+  });
+
+  factory DiscordUser.fromJson(Map<String, dynamic> json) {
+    return DiscordUser(
+      id: json['id'],
+      username: json['username'],
+      avatar: json['avatar'],
+      nickname: json['nickname'] ?? json['username'],
+      roles: List<String>.from(json['roles'] ?? []),
+      accessToken: json['accessToken'],
+    );
+  }
+}
+
+// ── APP ────────────────────────────────────────────────────────────────────
 class FusionApp extends StatelessWidget {
   const FusionApp({super.key});
 
@@ -35,13 +67,210 @@ class FusionApp extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFF0A0A0F),
       ),
-      home: const MainPage(),
+      home: const AuthWrapper(),
     );
   }
 }
 
+// ── AUTH WRAPPER ───────────────────────────────────────────────────────────
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  DiscordUser? _user;
+  bool _isLoading = false;
+  late AppLinks _appLinks;
+  StreamSubscription? _linkSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _initDeepLinks();
+  }
+
+  @override
+  void dispose() {
+    _linkSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _initDeepLinks() {
+    _appLinks = AppLinks();
+    _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
+      if (uri.scheme == 'fusionesports' && uri.host == 'auth') {
+        final code = uri.queryParameters['code'];
+        if (code != null) _handleDiscordCallback(code);
+      }
+    });
+  }
+
+  Future<void> _handleDiscordCallback(String code) async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await http.get(
+        Uri.parse('https://fusion-esports.netlify.app/api/discord_auth?code=$code'),
+      );
+      if (response.statusCode == 200) {
+        final user = DiscordUser.fromJson(jsonDecode(response.body));
+        setState(() => _user = user);
+      } else {
+        _showError('Login failed. Please try again.');
+      }
+    } catch (e) {
+      _showError('Something went wrong. Please try again.');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  Future<void> _loginWithDiscord() async {
+    const clientId = '1473722302968631588';
+    const redirectUri = 'https://fusion-esports.netlify.app/auth/callback';
+    const scope = 'identify guilds.members.read';
+    final url = Uri.parse(
+      'https://discord.com/oauth2/authorize?client_id=$clientId&redirect_uri=${Uri.encodeComponent(redirectUri)}&response_type=code&scope=${Uri.encodeComponent(scope)}',
+    );
+    await launchUrl(url, mode: LaunchMode.externalApplication);
+  }
+
+  void _logout() => setState(() => _user = null);
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Color(0xFF6C63FF)),
+              SizedBox(height: 16),
+              Text('Logging you in...', style: TextStyle(color: Colors.white54)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_user == null) {
+      return LoginPage(onLogin: _loginWithDiscord);
+    }
+
+    return MainPage(user: _user!, onLogout: _logout);
+  }
+}
+
+// ── LOGIN PAGE ─────────────────────────────────────────────────────────────
+class LoginPage extends StatelessWidget {
+  final VoidCallback onLogin;
+
+  const LoginPage({super.key, required this.onLogin});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF1A1A2E), Color(0xFF0A0A0F)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Spacer(),
+                // Logo
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF6C63FF).withOpacity(0.4),
+                        blurRadius: 30,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Image.asset('assets/icon.png'),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                const Text(
+                  'Fusion Esports',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Your community hub',
+                  style: TextStyle(color: Colors.white54, fontSize: 16),
+                ),
+                const Spacer(),
+                // Login button
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton.icon(
+                    onPressed: onLogin,
+                    icon: const Icon(Icons.discord, size: 24),
+                    label: const Text(
+                      'Login with Discord',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF5865F2),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'By logging in you agree to our terms of service',
+                  style: TextStyle(color: Colors.white24, fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── MAIN PAGE ──────────────────────────────────────────────────────────────
 class MainPage extends StatefulWidget {
-  const MainPage({super.key});
+  final DiscordUser user;
+  final VoidCallback onLogout;
+
+  const MainPage({super.key, required this.user, required this.onLogout});
 
   @override
   State<MainPage> createState() => _MainPageState();
@@ -50,17 +279,17 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = [
-    const HomePage(),
-    const SchedulePage(),
-    const StatsPage(),
-    const NewsPage(),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      HomePage(user: widget.user),
+      const SchedulePage(),
+      const StatsPage(),
+      const NewsPage(),
+    ];
+
     return Scaffold(
-      body: _pages[_currentIndex],
+      body: pages[_currentIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) => setState(() => _currentIndex = index),
@@ -77,13 +306,10 @@ class _MainPageState extends State<MainPage> {
 }
 
 // ── DATA FETCHING ──────────────────────────────────────────────────────────
-const String _binId = Config.jsonBinId;
-const String _apiKey = Config.jsonBinApiKey;
-
 Future<Map<String, dynamic>> fetchBinData() async {
   final response = await http.get(
-    Uri.parse('https://api.jsonbin.io/v3/b/$_binId/latest'),
-    headers: {'X-Master-Key': _apiKey},
+    Uri.parse('https://api.jsonbin.io/v3/b/${Config.jsonBinId}/latest'),
+    headers: {'X-Master-Key': Config.jsonBinApiKey},
   );
   if (response.statusCode == 200) {
     return jsonDecode(response.body)['record'];
@@ -93,7 +319,9 @@ Future<Map<String, dynamic>> fetchBinData() async {
 
 // ── HOME PAGE ──────────────────────────────────────────────────────────────
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final DiscordUser user;
+
+  const HomePage({super.key, required this.user});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -109,33 +337,26 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _getNextTournament(Map<String, dynamic> tournament) {
-  final now = DateTime.now();
-  final dayOfWeek = tournament['dayOfWeek'];
-  final hour = tournament['hour'];
-  final minute = tournament['minute'];
+    final now = DateTime.now();
+    final dayOfWeek = tournament['dayOfWeek'];
+    final hour = tournament['hour'];
+    final minute = tournament['minute'];
 
-  // Tournament time is UK time (UTC), convert to local time
-  var next = DateTime.utc(now.year, now.month, now.day, hour, minute).toLocal();
+    var next = DateTime.utc(now.year, now.month, now.day, hour, minute).toLocal();
+    while (next.weekday != dayOfWeek) {
+      next = next.add(const Duration(days: 1));
+    }
+    if (!next.isAfter(now)) next = next.add(const Duration(days: 7));
 
-  // Find the next correct weekday
-  while (next.weekday != dayOfWeek) {
-    next = next.add(const Duration(days: 1));
+    final diff = next.difference(now);
+    final days = diff.inDays;
+    final hours = diff.inHours % 24;
+    final minutes = diff.inMinutes % 60;
+
+    if (days > 0) return 'In ${days}d ${hours}h ${minutes}m';
+    if (hours > 0) return 'In ${hours}h ${minutes}m';
+    return 'In ${minutes}m';
   }
-
-  // If that time has already passed, add 7 days
-  if (!next.isAfter(now)) {
-    next = next.add(const Duration(days: 7));
-  }
-
-  final diff = next.difference(now);
-  final days = diff.inDays;
-  final hours = diff.inHours % 24;
-  final minutes = diff.inMinutes % 60;
-
-  if (days > 0) return 'In ${days}d ${hours}h ${minutes}m';
-  if (hours > 0) return 'In ${hours}h ${minutes}m';
-  return 'In ${minutes}m';
-}
 
   @override
   Widget build(BuildContext context) {
@@ -155,6 +376,42 @@ class _HomePageState extends State<HomePage> {
                 expandedHeight: 200,
                 floating: false,
                 pinned: true,
+                actions: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: GestureDetector(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            backgroundColor: const Color(0xFF12121A),
+                            title: Text(widget.user.nickname,
+                                style: const TextStyle(color: Colors.white)),
+                            content: Text('@${widget.user.username}',
+                                style: const TextStyle(color: Colors.white54)),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Close'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      child: CircleAvatar(
+                        radius: 18,
+                        backgroundImage: widget.user.avatar != null
+                            ? NetworkImage(widget.user.avatar!)
+                            : null,
+                        backgroundColor: const Color(0xFF6C63FF),
+                        child: widget.user.avatar == null
+                            ? Text(widget.user.username[0].toUpperCase(),
+                                style: const TextStyle(color: Colors.white))
+                            : null,
+                      ),
+                    ),
+                  ),
+                ],
                 flexibleSpace: FlexibleSpaceBar(
                   title: const Text('Fusion Esports',
                       style: TextStyle(fontWeight: FontWeight.bold)),
@@ -173,6 +430,13 @@ class _HomePageState extends State<HomePage> {
                 padding: const EdgeInsets.all(16),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
+                    // Welcome message
+                    Text(
+                      'Welcome back, ${widget.user.nickname}!',
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 15),
+                    ),
+                    const SizedBox(height: 16),
                     _InfoCard(
                       icon: Icons.people,
                       title: 'Discord Members',
@@ -190,7 +454,7 @@ class _HomePageState extends State<HomePage> {
                     if (lastWinner != null)
                       _InfoCard(
                         icon: Icons.military_tech,
-                        title: 'Last Tournament Winner',
+                        title: 'Last Winner',
                         value: lastWinner['first'] ?? 'TBD',
                         color: const Color(0xFFFFD700),
                       ),
@@ -346,7 +610,6 @@ class SchedulePage extends StatefulWidget {
 class _SchedulePageState extends State<SchedulePage> {
   late Future<Map<String, dynamic>> _data;
   late Timer _timer;
-  String _countdown = '';
 
   @override
   void initState() {
@@ -416,7 +679,6 @@ class _SchedulePageState extends State<SchedulePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Countdown card
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
@@ -451,10 +713,7 @@ class _SchedulePageState extends State<SchedulePage> {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
-                // Upcoming count
                 _ScheduleInfoRow(
                   icon: Icons.event,
                   label: 'Upcoming Tournaments',
@@ -462,8 +721,6 @@ class _SchedulePageState extends State<SchedulePage> {
                   color: const Color(0xFF6C63FF),
                 ),
                 const SizedBox(height: 12),
-
-                // Schedule info
                 _ScheduleInfoRow(
                   icon: Icons.repeat,
                   label: 'Frequency',
@@ -477,17 +734,13 @@ class _SchedulePageState extends State<SchedulePage> {
                   value: '${hour}:$minute UTC (${hour + 1}:$minute CET)',
                   color: const Color(0xFF4CAF50),
                 ),
-
                 const SizedBox(height: 24),
-
-                // Last winner section
                 const Text('Last Tournament Results',
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
-
                 if (lastWinner != null) ...[
                   _WinnerCard(
                     place: '🥇 1st',
@@ -513,12 +766,10 @@ class _SchedulePageState extends State<SchedulePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(lastWinner['note'] ?? '',
-                            style: const TextStyle(
-                                color: Colors.white70, fontSize: 13)),
+                            style: const TextStyle(color: Colors.white70, fontSize: 13)),
                         const SizedBox(height: 4),
                         Text(lastWinner['date'] ?? '',
-                            style: const TextStyle(
-                                color: Colors.white38, fontSize: 12)),
+                            style: const TextStyle(color: Colors.white38, fontSize: 12)),
                       ],
                     ),
                   ),
