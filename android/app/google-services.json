@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "714168073749",
+    "project_id": "fusion-app-3c3e4",
+    "storage_bucket": "fusion-app-3c3e4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:714168073749:android:dc27a0d0a747356942d81c",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDnlOa94n9r-0kn9uhNSxh8Zqer2l44cQc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
