@@ -286,6 +286,7 @@ class _MainPageState extends State<MainPage> {
       const SchedulePage(),
       const StatsPage(),
       const NewsPage(),
+      SettingsPage(user: widget.user, onLogout: widget.onLogout),
     ];
 
     return Scaffold(
@@ -299,6 +300,7 @@ class _MainPageState extends State<MainPage> {
           NavigationDestination(icon: Icon(Icons.calendar_month), label: 'Schedule'),
           NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Stats'),
           NavigationDestination(icon: Icon(Icons.newspaper), label: 'News'),
+          NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),
     );
@@ -892,6 +894,359 @@ class NewsPage extends StatelessWidget {
       body: const Center(
         child: Text('News coming soon',
             style: TextStyle(color: Colors.white54)),
+      ),
+    );
+  }
+}
+
+// ── SETTINGS PAGE ──────────────────────────────────────────────────────────
+class SettingsPage extends StatefulWidget {
+  final DiscordUser user;
+  final VoidCallback onLogout;
+
+  const SettingsPage({super.key, required this.user, required this.onLogout});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  bool _notificationsEnabled = true;
+  bool _isDarkMode = true;
+  Set<String> _userRoles = {};
+  bool _rolesLoading = false;
+
+  static const Map<String, Map<String, dynamic>> _availableRoles = {
+    // Ranks
+    '1472256135498174484': {'name': 'SSL', 'category': 'Rank', 'color': Color(0xFFFF6B6B)},
+    '1472256020033175733': {'name': 'GC', 'category': 'Rank', 'color': Color(0xFFFF6B6B)},
+    '1472255906895888536': {'name': 'Champion', 'category': 'Rank', 'color': Color(0xFF9B59B6)},
+    '1472255796149751895': {'name': 'Diamond', 'category': 'Rank', 'color': Color(0xFF5DADE2)},
+    '1472255689496727624': {'name': 'Platinum', 'category': 'Rank', 'color': Color(0xFF48C9B0)},
+    '1472255533095321680': {'name': 'Gold', 'category': 'Rank', 'color': Color(0xFFFFD700)},
+    '1472255376446460097': {'name': 'Silver', 'category': 'Rank', 'color': Color(0xFFBDC3C7)},
+    '1472255257550786610': {'name': 'Bronze', 'category': 'Rank', 'color': Color(0xFFCD7F32)},
+    // Regions
+    '1472258075699450009': {'name': 'EU', 'category': 'Region', 'color': Color(0xFF3498DB)},
+    '1472258189054447707': {'name': 'NA', 'category': 'Region', 'color': Color(0xFFE74C3C)},
+    '1472258244725444711': {'name': 'MENA', 'category': 'Region', 'color': Color(0xFF2ECC71)},
+    '1472258344659193927': {'name': 'Other', 'category': 'Region', 'color': Color(0xFF95A5A6)},
+    // Platforms
+    '1472258403094106132': {'name': 'PC', 'category': 'Platform', 'color': Color(0xFF6C63FF)},
+    '1472258460484898978': {'name': 'PlayStation', 'category': 'Platform', 'color': Color(0xFF003087)},
+    '1472258609797922917': {'name': 'Xbox', 'category': 'Platform', 'color': Color(0xFF107C10)},
+    '1472258550255325367': {'name': 'Switch', 'category': 'Platform', 'color': Color(0xFFE4000F)},
+    // Notifications
+    '1474677783572516984': {'name': 'Tournaments', 'category': 'Notifications', 'color': Color(0xFFFF6B6B)},
+    '1474678114033340559': {'name': 'Scrims', 'category': 'Notifications', 'color': Color(0xFF6C63FF)},
+    '1474678614367932426': {'name': 'YouTube', 'category': 'Notifications', 'color': Color(0xFFFF0000)},
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _userRoles = Set<String>.from(widget.user.roles);
+  }
+
+  Future<void> _toggleRole(String roleId, bool add) async {
+    setState(() => _rolesLoading = true);
+    try {
+      final response = await http.post(
+        Uri.parse('https://fusion-esports.netlify.app/api/manage_roles'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': widget.user.id,
+          'roleId': roleId,
+          'action': add ? 'add' : 'remove',
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          if (add) {
+            _userRoles.add(roleId);
+          } else {
+            _userRoles.remove(roleId);
+          }
+        });
+      } else {
+        _showError('Failed to update role. Please try again.');
+      }
+    } catch (e) {
+      _showError('Something went wrong.');
+    } finally {
+      setState(() => _rolesLoading = false);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  Widget _buildRoleCategory(String category, List<MapEntry<String, Map<String, dynamic>>> roles) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Text(category,
+              style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1)),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF12121A),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: roles.map((entry) {
+              final roleId = entry.key;
+              final role = entry.value;
+              final isSelected = _userRoles.contains(roleId);
+              final color = role['color'] as Color;
+
+              return GestureDetector(
+                onTap: _rolesLoading ? null : () => _toggleRole(roleId, !isSelected),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? color.withValues(alpha: 0.2) : const Color(0xFF1A1A2E),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isSelected ? color : Colors.white12,
+                      width: isSelected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Text(
+                    role['name'] as String,
+                    style: TextStyle(
+                      color: isSelected ? color : Colors.white54,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Group roles by category
+    final categories = <String, List<MapEntry<String, Map<String, dynamic>>>>{};
+    for (final entry in _availableRoles.entries) {
+      final category = entry.value['category'] as String;
+      categories.putIfAbsent(category, () => []).add(entry);
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Settings'),
+        backgroundColor: const Color(0xFF12121A),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Profile card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF12121A),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF6C63FF).withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundImage: widget.user.avatar != null
+                        ? NetworkImage(widget.user.avatar!)
+                        : null,
+                    backgroundColor: const Color(0xFF6C63FF),
+                    child: widget.user.avatar == null
+                        ? Text(widget.user.username[0].toUpperCase(),
+                            style: const TextStyle(color: Colors.white, fontSize: 24))
+                        : null,
+                  ),
+                  const SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(widget.user.nickname,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                      Text('@${widget.user.username}',
+                          style: const TextStyle(color: Colors.white54)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // App settings
+            const Text('APP',
+                style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1)),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF12121A),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    title: const Text('Push Notifications',
+                        style: TextStyle(color: Colors.white)),
+                    subtitle: const Text('Receive app notifications',
+                        style: TextStyle(color: Colors.white54, fontSize: 12)),
+                    value: _notificationsEnabled,
+                    activeColor: const Color(0xFF6C63FF),
+                    onChanged: (val) => setState(() => _notificationsEnabled = val),
+                  ),
+                  const Divider(color: Colors.white12, height: 1),
+                  SwitchListTile(
+                    title: const Text('Dark Mode',
+                        style: TextStyle(color: Colors.white)),
+                    subtitle: const Text('Toggle dark/light theme',
+                        style: TextStyle(color: Colors.white54, fontSize: 12)),
+                    value: _isDarkMode,
+                    activeColor: const Color(0xFF6C63FF),
+                    onChanged: (val) => setState(() => _isDarkMode = val),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Roles section
+            Row(
+              children: [
+                const Text('YOUR ROLES',
+                    style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1)),
+                if (_rolesLoading) ...[
+                  const SizedBox(width: 8),
+                  const SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Color(0xFF6C63FF)),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 8),
+            ...categories.entries.map((e) => _buildRoleCategory(e.key, e.value)),
+
+            const SizedBox(height: 8),
+
+            // About section
+            const Text('ABOUT',
+                style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1)),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF12121A),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  ListTile(
+                    title: const Text('Version',
+                        style: TextStyle(color: Colors.white)),
+                    trailing: const Text('2.3.2',
+                        style: TextStyle(color: Colors.white54)),
+                  ),
+                  const Divider(color: Colors.white12, height: 1),
+                  ListTile(
+                    title: const Text('Fusion Esports',
+                        style: TextStyle(color: Colors.white)),
+                    trailing: const Text('© 2026',
+                        style: TextStyle(color: Colors.white54)),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Logout button
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      backgroundColor: const Color(0xFF12121A),
+                      title: const Text('Logout',
+                          style: TextStyle(color: Colors.white)),
+                      content: const Text('Are you sure you want to logout?',
+                          style: TextStyle(color: Colors.white54)),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            widget.onLogout();
+                          },
+                          child: const Text('Logout',
+                              style: TextStyle(color: Colors.red)),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.logout, color: Colors.white),
+                label: const Text('Logout',
+                    style: TextStyle(color: Colors.white, fontSize: 16)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.withOpacity(0.2),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.red.withOpacity(0.5))),
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
       ),
     );
   }
