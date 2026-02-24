@@ -881,19 +881,179 @@ class StatsPage extends StatelessWidget {
 }
 
 // ── NEWS PAGE ──────────────────────────────────────────────────────────────
-class NewsPage extends StatelessWidget {
+class NewsPage extends StatefulWidget {
   const NewsPage({super.key});
+
+  @override
+  State<NewsPage> createState() => _NewsPageState();
+}
+
+class _NewsPageState extends State<NewsPage> {
+  late Future<List<dynamic>> _announcements;
+
+  @override
+  void initState() {
+    super.initState();
+    _announcements = _fetchAnnouncements();
+  }
+
+  Future<List<dynamic>> _fetchAnnouncements() async {
+    final response = await http.get(
+      Uri.parse('https://fusion-esports.netlify.app/api/announcements'),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load announcements');
+  }
+
+  String _formatTime(String timestamp) {
+    final date = DateTime.parse(timestamp).toLocal();
+    final now = DateTime.now();
+    final diff = now.difference(date);
+
+    if (diff.inDays > 7) return '${date.day}/${date.month}/${date.year}';
+    if (diff.inDays > 0) return '${diff.inDays}d ago';
+    if (diff.inHours > 0) return '${diff.inHours}h ago';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
+    return 'Just now';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('News'),
+        title: const Text('Announcements'),
         backgroundColor: const Color(0xFF12121A),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => setState(() => _announcements = _fetchAnnouncements()),
+          ),
+        ],
       ),
-      body: const Center(
-        child: Text('News coming soon',
-            style: TextStyle(color: Colors.white54)),
+      body: FutureBuilder<List<dynamic>>(
+        future: _announcements,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+            );
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                  const SizedBox(height: 12),
+                  const Text('Failed to load announcements',
+                      style: TextStyle(color: Colors.white54)),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () => setState(() => _announcements = _fetchAnnouncements()),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final announcements = snapshot.data!;
+
+          if (announcements.isEmpty) {
+            return const Center(
+              child: Text('No announcements yet',
+                  style: TextStyle(color: Colors.white54)),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: announcements.length,
+            itemBuilder: (context, index) {
+              final a = announcements[index];
+              final hasAttachments = (a['attachments'] as List).isNotEmpty;
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF12121A),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF6C63FF).withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundImage: a['authorAvatar'] != null
+                                ? NetworkImage(a['authorAvatar'])
+                                : null,
+                            backgroundColor: const Color(0xFF6C63FF),
+                            child: a['authorAvatar'] == null
+                                ? Text(
+                                    (a['author'] as String)[0].toUpperCase(),
+                                    style: const TextStyle(color: Colors.white),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(a['author'],
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold)),
+                                Text(_formatTime(a['timestamp']),
+                                    style: const TextStyle(
+                                        color: Colors.white38, fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Content
+                    if (a['content'] != null && a['content'].isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          a['content'],
+                          style: const TextStyle(color: Colors.white70, height: 1.5),
+                        ),
+                      ),
+
+                    // Attachments
+                    if (hasAttachments)
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            a['attachments'][0],
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                          ),
+                        ),
+                      )
+                    else
+                      const SizedBox(height: 12),
+                  ],
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
