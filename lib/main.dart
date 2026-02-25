@@ -113,7 +113,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
     setState(() => _isLoading = true);
     try {
       final response = await http.get(
-        Uri.parse('https://fusion-esports.netlify.app/api/discord_auth?code=$code'),
+        Uri.parse(
+          'https://fusion-esports.netlify.app/api/discord_auth?code=$code',
+        ),
       );
       if (response.statusCode == 200) {
         final user = DiscordUser.fromJson(jsonDecode(response.body));
@@ -156,7 +158,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
             children: [
               CircularProgressIndicator(color: Color(0xFF6C63FF)),
               SizedBox(height: 16),
-              Text('Logging you in...', style: TextStyle(color: Colors.white54)),
+              Text(
+                'Logging you in...',
+                style: TextStyle(color: Colors.white54),
+              ),
             ],
           ),
         ),
@@ -243,40 +248,61 @@ class _LoginPageState extends State<LoginPage> {
                   children: [
                     Checkbox(
                       value: _accepted,
-                      onChanged: (val) => setState(() => _accepted = val ?? false),
+                      onChanged: (val) =>
+                          setState(() => _accepted = val ?? false),
                       activeColor: const Color(0xFF6C63FF),
                       side: const BorderSide(color: Colors.white38),
                     ),
                     Expanded(
                       child: Wrap(
                         children: [
-                          const Text('I agree to the ',
-                              style: TextStyle(color: Colors.white54, fontSize: 13)),
-                          GestureDetector(
-                            onTap: () => launchUrl(
-                              Uri.parse('https://fusion-esports.netlify.app/terms'),
-                              mode: LaunchMode.externalApplication,
+                          const Text(
+                            'I agree to the ',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 13,
                             ),
-                            child: const Text('Terms of Service',
-                                style: TextStyle(
-                                    color: Color(0xFF6C63FF),
-                                    fontSize: 13,
-                                    decoration: TextDecoration.underline,
-                                    decorationColor: Color(0xFF6C63FF))),
                           ),
-                          const Text(' and ',
-                              style: TextStyle(color: Colors.white54, fontSize: 13)),
                           GestureDetector(
                             onTap: () => launchUrl(
-                              Uri.parse('https://fusion-esports.netlify.app/privacy'),
+                              Uri.parse(
+                                'https://fusion-esports.netlify.app/terms',
+                              ),
                               mode: LaunchMode.externalApplication,
                             ),
-                            child: const Text('Privacy Policy',
-                                style: TextStyle(
-                                    color: Color(0xFF6C63FF),
-                                    fontSize: 13,
-                                    decoration: TextDecoration.underline,
-                                    decorationColor: Color(0xFF6C63FF))),
+                            child: const Text(
+                              'Terms of Service',
+                              style: TextStyle(
+                                color: Color(0xFF6C63FF),
+                                fontSize: 13,
+                                decoration: TextDecoration.underline,
+                                decorationColor: Color(0xFF6C63FF),
+                              ),
+                            ),
+                          ),
+                          const Text(
+                            ' and ',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 13,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => launchUrl(
+                              Uri.parse(
+                                'https://fusion-esports.netlify.app/privacy',
+                              ),
+                              mode: LaunchMode.externalApplication,
+                            ),
+                            child: const Text(
+                              'Privacy Policy',
+                              style: TextStyle(
+                                color: Color(0xFF6C63FF),
+                                fontSize: 13,
+                                decoration: TextDecoration.underline,
+                                decorationColor: Color(0xFF6C63FF),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -293,12 +319,17 @@ class _LoginPageState extends State<LoginPage> {
                     icon: const Icon(Icons.discord, size: 24),
                     label: const Text(
                       'Login with Discord',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF5865F2),
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor: const Color(0xFF5865F2).withValues(alpha: 0.3),
+                      disabledBackgroundColor: const Color(
+                        0xFF5865F2,
+                      ).withValues(alpha: 0.3),
                       disabledForegroundColor: Colors.white38,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
@@ -316,7 +347,11 @@ class _LoginPageState extends State<LoginPage> {
                       Uri.parse('https://discord.gg/Nsng7acTP7'),
                       mode: LaunchMode.externalApplication,
                     ),
-                    icon: const Icon(Icons.group_add, size: 20, color: Colors.white54),
+                    icon: const Icon(
+                      Icons.group_add,
+                      size: 20,
+                      color: Colors.white54,
+                    ),
                     label: const Text(
                       'Join our Discord first',
                       style: TextStyle(color: Colors.white54, fontSize: 14),
@@ -371,7 +406,10 @@ class _MainPageState extends State<MainPage> {
         backgroundColor: const Color(0xFF12121A),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.calendar_month), label: 'Schedule'),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_month),
+            label: 'Schedule',
+          ),
           NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Stats'),
           NavigationDestination(icon: Icon(Icons.newspaper), label: 'News'),
           NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
@@ -418,7 +456,13 @@ class _HomePageState extends State<HomePage> {
     final hour = tournament['hour'];
     final minute = tournament['minute'];
 
-    var next = DateTime.utc(now.year, now.month, now.day, hour, minute).toLocal();
+    var next = DateTime.utc(
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    ).toLocal();
     while (next.weekday != dayOfWeek) {
       next = next.add(const Duration(days: 1));
     }
@@ -443,7 +487,9 @@ class _HomePageState extends State<HomePage> {
           final memberCount = snapshot.data?['memberCount'] ?? '...';
           final tournament = snapshot.data?['tournament'];
           final lastWinner = snapshot.data?['lastWinner'];
-          final nextTournament = tournament != null ? _getNextTournament(tournament) : '...';
+          final nextTournament = tournament != null
+              ? _getNextTournament(tournament)
+              : '...';
           final tournamentName = tournament?['name'] ?? 'Tournament';
 
           return CustomScrollView(
@@ -461,10 +507,14 @@ class _HomePageState extends State<HomePage> {
                           context: context,
                           builder: (_) => AlertDialog(
                             backgroundColor: const Color(0xFF12121A),
-                            title: Text(widget.user.nickname,
-                                style: const TextStyle(color: Colors.white)),
-                            content: Text('@${widget.user.username}',
-                                style: const TextStyle(color: Colors.white54)),
+                            title: Text(
+                              widget.user.nickname,
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            content: Text(
+                              '@${widget.user.username}',
+                              style: const TextStyle(color: Colors.white54),
+                            ),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context),
@@ -481,16 +531,20 @@ class _HomePageState extends State<HomePage> {
                             : null,
                         backgroundColor: const Color(0xFF6C63FF),
                         child: widget.user.avatar == null
-                            ? Text(widget.user.username[0].toUpperCase(),
-                                style: const TextStyle(color: Colors.white))
+                            ? Text(
+                                widget.user.username[0].toUpperCase(),
+                                style: const TextStyle(color: Colors.white),
+                              )
                             : null,
                       ),
                     ),
                   ),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
-                  title: const Text('Fusion Esports',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  title: const Text(
+                    'Fusion Esports',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   background: Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
@@ -510,7 +564,9 @@ class _HomePageState extends State<HomePage> {
                     Text(
                       'Welcome back, ${widget.user.nickname}!',
                       style: const TextStyle(
-                          color: Colors.white70, fontSize: 15),
+                        color: Colors.white70,
+                        fontSize: 15,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     _InfoCard(
@@ -535,15 +591,19 @@ class _HomePageState extends State<HomePage> {
                         color: const Color(0xFFFFD700),
                       ),
                     const SizedBox(height: 24),
-                    const Text('Socials',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Socials',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     if (snapshot.data != null)
-                      ...List<Map<String, dynamic>>.from(snapshot.data!['socials'])
-                          .map((social) => _SocialCard(social: social)),
+                      ...List<Map<String, dynamic>>.from(
+                        snapshot.data!['socials'],
+                      ).map((social) => _SocialCard(social: social)),
                   ]),
                 ),
               ),
@@ -591,12 +651,18 @@ class _InfoCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(color: Colors.white54, fontSize: 13)),
-              Text(value,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold)),
+              Text(
+                title,
+                style: const TextStyle(color: Colors.white54, fontSize: 13),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
         ],
@@ -612,21 +678,31 @@ class _SocialCard extends StatelessWidget {
 
   IconData _getIcon(String platform) {
     switch (platform.toLowerCase()) {
-      case 'youtube': return Icons.play_circle_fill;
-      case 'twitter': return Icons.alternate_email;
-      case 'instagram': return Icons.camera_alt;
-      case 'website': return Icons.language;
-      default: return Icons.link;
+      case 'youtube':
+        return Icons.play_circle_fill;
+      case 'twitter':
+        return Icons.alternate_email;
+      case 'instagram':
+        return Icons.camera_alt;
+      case 'website':
+        return Icons.language;
+      default:
+        return Icons.link;
     }
   }
 
   Color _getColor(String platform) {
     switch (platform.toLowerCase()) {
-      case 'youtube': return const Color(0xFFFF0000);
-      case 'twitter': return const Color(0xFF1DA1F2);
-      case 'instagram': return const Color(0xFFE1306C);
-      case 'website': return const Color(0xFF6C63FF);
-      default: return Colors.white54;
+      case 'youtube':
+        return const Color(0xFFFF0000);
+      case 'twitter':
+        return const Color(0xFF1DA1F2);
+      case 'instagram':
+        return const Color(0xFFE1306C);
+      case 'website':
+        return const Color(0xFF6C63FF);
+      default:
+        return Colors.white54;
     }
   }
 
@@ -659,15 +735,25 @@ class _SocialCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(social['name'] ?? '',
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold)),
-                  Text(social['desc'] ?? '',
-                      style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  Text(
+                    social['name'] ?? '',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    social['desc'] ?? '',
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 14),
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.white24,
+              size: 14,
+            ),
           ],
         ),
       ),
@@ -706,7 +792,13 @@ class _SchedulePageState extends State<SchedulePage> {
     final hour = tournament['hour'];
     final minute = tournament['minute'];
 
-    var next = DateTime.utc(now.year, now.month, now.day, hour, minute).toLocal();
+    var next = DateTime.utc(
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    ).toLocal();
     while (next.weekday != dayOfWeek) {
       next = next.add(const Duration(days: 1));
     }
@@ -724,7 +816,15 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 
   String _getWeekdayName(int day) {
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const days = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
     return days[day - 1];
   }
 
@@ -768,24 +868,37 @@ class _SchedulePageState extends State<SchedulePage> {
                   ),
                   child: Column(
                     children: [
-                      const Text('Next Tournament',
-                          style: TextStyle(color: Colors.white70, fontSize: 14)),
+                      const Text(
+                        'Next Tournament',
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
                       const SizedBox(height: 8),
-                      Text(tournament['name'],
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold)),
+                      Text(
+                        tournament['name'],
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 16),
-                      Text(countdown,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1.2)),
+                      Text(
+                        countdown,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
                       const SizedBox(height: 8),
-                      Text('Every $weekday at ${hour}:$minute UTC',
-                          style: const TextStyle(color: Colors.white60, fontSize: 13)),
+                      Text(
+                        'Every $weekday at ${hour}:$minute UTC',
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontSize: 13,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -811,11 +924,14 @@ class _SchedulePageState extends State<SchedulePage> {
                   color: const Color(0xFF4CAF50),
                 ),
                 const SizedBox(height: 24),
-                const Text('Last Tournament Results',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold)),
+                const Text(
+                  'Last Tournament Results',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 if (lastWinner != null) ...[
                   _WinnerCard(
@@ -841,11 +957,21 @@ class _SchedulePageState extends State<SchedulePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(lastWinner['note'] ?? '',
-                            style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                        Text(
+                          lastWinner['note'] ?? '',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text(lastWinner['date'] ?? '',
-                            style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                        Text(
+                          lastWinner['date'] ?? '',
+                          style: const TextStyle(
+                            color: Colors.white38,
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -888,11 +1014,17 @@ class _ScheduleInfoRow extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label,
-                  style: const TextStyle(color: Colors.white54, fontSize: 12)),
-              Text(value,
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w600)),
+              Text(
+                label,
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ],
@@ -923,12 +1055,16 @@ class _WinnerCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(place,
-              style: TextStyle(
-                  color: color, fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(
+            place,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
           const SizedBox(width: 12),
-          Text(name,
-              style: const TextStyle(color: Colors.white, fontSize: 16)),
+          Text(name, style: const TextStyle(color: Colors.white, fontSize: 16)),
         ],
       ),
     );
@@ -988,7 +1124,8 @@ class _StatsPageState extends State<StatsPage> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-                child: CircularProgressIndicator(color: Color(0xFF6C63FF)));
+              child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+            );
           }
           if (snapshot.hasError) {
             return Center(
@@ -997,8 +1134,10 @@ class _StatsPageState extends State<StatsPage> {
                 children: [
                   const Icon(Icons.error_outline, color: Colors.red, size: 48),
                   const SizedBox(height: 12),
-                  const Text('Failed to load stats',
-                      style: TextStyle(color: Colors.white54)),
+                  const Text(
+                    'Failed to load stats',
+                    style: TextStyle(color: Colors.white54),
+                  ),
                   const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: () => setState(() => _xpData = _fetchXPData()),
@@ -1014,7 +1153,9 @@ class _StatsPageState extends State<StatsPage> {
 
           // Sort leaderboard
           final sorted = data.entries.toList()
-            ..sort((a, b) => (b.value['xp'] as int).compareTo(a.value['xp'] as int));
+            ..sort(
+              (a, b) => (b.value['xp'] as int).compareTo(a.value['xp'] as int),
+            );
 
           final myRank = sorted.indexWhere((e) => e.key == widget.user.id) + 1;
 
@@ -1047,25 +1188,33 @@ class _StatsPageState extends State<StatsPage> {
 
                 // Leaderboard toggle
                 GestureDetector(
-                  onTap: () => setState(() => _showLeaderboard = !_showLeaderboard),
+                  onTap: () =>
+                      setState(() => _showLeaderboard = !_showLeaderboard),
                   child: Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: const Color(0xFF12121A),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                          color: const Color(0xFF6C63FF).withValues(alpha: 0.3)),
+                        color: const Color(0xFF6C63FF).withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.leaderboard,
-                            color: Color(0xFF6C63FF), size: 22),
+                        const Icon(
+                          Icons.leaderboard,
+                          color: Color(0xFF6C63FF),
+                          size: 22,
+                        ),
                         const SizedBox(width: 12),
-                        const Text('Leaderboard',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16)),
+                        const Text(
+                          'Leaderboard',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                         const Spacer(),
                         Icon(
                           _showLeaderboard
@@ -1110,12 +1259,14 @@ class _StatsPageState extends State<StatsPage> {
                               rank == 1
                                   ? '🥇'
                                   : rank == 2
-                                      ? '🥈'
-                                      : rank == 3
-                                          ? '🥉'
-                                          : '#$rank',
+                                  ? '🥈'
+                                  : rank == 3
+                                  ? '🥉'
+                                  : '#$rank',
                               style: const TextStyle(
-                                  color: Colors.white54, fontSize: 14),
+                                color: Colors.white54,
+                                fontSize: 14,
+                              ),
                               textAlign: TextAlign.center,
                             ),
                           ),
@@ -1135,9 +1286,13 @@ class _StatsPageState extends State<StatsPage> {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                Text('Level $level • $xp XP',
-                                    style: const TextStyle(
-                                        color: Colors.white54, fontSize: 12)),
+                                Text(
+                                  'Level $level • $xp XP',
+                                  style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 12,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -1185,8 +1340,13 @@ class _StatsPageState extends State<StatsPage> {
                     : null,
                 backgroundColor: Colors.white24,
                 child: widget.user.avatar == null
-                    ? Text(widget.user.username[0].toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontSize: 22))
+                    ? Text(
+                        widget.user.username[0].toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                        ),
+                      )
                     : null,
               ),
               const SizedBox(width: 12),
@@ -1194,26 +1354,40 @@ class _StatsPageState extends State<StatsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(widget.user.nickname,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold)),
-                    Text('Rank #$rank on the server',
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 13)),
+                    Text(
+                      widget.user.nickname,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Rank #$rank on the server',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
+                    ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white24,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text('Level $level',
-                    style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold)),
+                child: Text(
+                  'Level $level',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),
@@ -1222,10 +1396,14 @@ class _StatsPageState extends State<StatsPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('$xp XP',
-                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
-              Text('${nextLevelXp} XP for Level ${level + 1}',
-                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              Text(
+                '$xp XP',
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+              Text(
+                '${nextLevelXp} XP for Level ${level + 1}',
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -1258,11 +1436,18 @@ class _StatsPageState extends State<StatsPage> {
       children: [
         Icon(icon, color: Colors.white70, size: 20),
         const SizedBox(height: 4),
-        Text(value,
-            style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-        Text(label,
-            style: const TextStyle(color: Colors.white70, fontSize: 11)),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white70, fontSize: 11),
+        ),
       ],
     );
   }
@@ -1316,7 +1501,8 @@ class _NewsPageState extends State<NewsPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => setState(() => _announcements = _fetchAnnouncements()),
+            onPressed: () =>
+                setState(() => _announcements = _fetchAnnouncements()),
           ),
         ],
       ),
@@ -1336,11 +1522,14 @@ class _NewsPageState extends State<NewsPage> {
                 children: [
                   const Icon(Icons.error_outline, color: Colors.red, size: 48),
                   const SizedBox(height: 12),
-                  const Text('Failed to load announcements',
-                      style: TextStyle(color: Colors.white54)),
+                  const Text(
+                    'Failed to load announcements',
+                    style: TextStyle(color: Colors.white54),
+                  ),
                   const SizedBox(height: 12),
                   ElevatedButton(
-                    onPressed: () => setState(() => _announcements = _fetchAnnouncements()),
+                    onPressed: () =>
+                        setState(() => _announcements = _fetchAnnouncements()),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -1352,8 +1541,10 @@ class _NewsPageState extends State<NewsPage> {
 
           if (announcements.isEmpty) {
             return const Center(
-              child: Text('No announcements yet',
-                  style: TextStyle(color: Colors.white54)),
+              child: Text(
+                'No announcements yet',
+                style: TextStyle(color: Colors.white54),
+              ),
             );
           }
 
@@ -1369,7 +1560,9 @@ class _NewsPageState extends State<NewsPage> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF12121A),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF6C63FF).withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: const Color(0xFF6C63FF).withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1397,13 +1590,20 @@ class _NewsPageState extends State<NewsPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(a['author'],
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold)),
-                                Text(_formatTime(a['timestamp']),
-                                    style: const TextStyle(
-                                        color: Colors.white38, fontSize: 12)),
+                                Text(
+                                  a['author'],
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  _formatTime(a['timestamp']),
+                                  style: const TextStyle(
+                                    color: Colors.white38,
+                                    fontSize: 12,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -1417,7 +1617,10 @@ class _NewsPageState extends State<NewsPage> {
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Text(
                           a['content'],
-                          style: const TextStyle(color: Colors.white70, height: 1.5),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            height: 1.5,
+                          ),
                         ),
                       ),
 
@@ -1466,28 +1669,104 @@ class _SettingsPageState extends State<SettingsPage> {
 
   static const Map<String, Map<String, dynamic>> _availableRoles = {
     // Ranks
-    '1472256135498174484': {'name': 'SSL', 'category': 'Rank', 'color': Color(0xFFFF6B6B)},
-    '1472256020033175733': {'name': 'GC', 'category': 'Rank', 'color': Color(0xFFFF6B6B)},
-    '1472255906895888536': {'name': 'Champion', 'category': 'Rank', 'color': Color(0xFF9B59B6)},
-    '1472255796149751895': {'name': 'Diamond', 'category': 'Rank', 'color': Color(0xFF5DADE2)},
-    '1472255689496727624': {'name': 'Platinum', 'category': 'Rank', 'color': Color(0xFF48C9B0)},
-    '1472255533095321680': {'name': 'Gold', 'category': 'Rank', 'color': Color(0xFFFFD700)},
-    '1472255376446460097': {'name': 'Silver', 'category': 'Rank', 'color': Color(0xFFBDC3C7)},
-    '1472255257550786610': {'name': 'Bronze', 'category': 'Rank', 'color': Color(0xFFCD7F32)},
+    '1472256135498174484': {
+      'name': 'SSL',
+      'category': 'Rank',
+      'color': Color(0xFFFF6B6B),
+    },
+    '1472256020033175733': {
+      'name': 'GC',
+      'category': 'Rank',
+      'color': Color(0xFFFF6B6B),
+    },
+    '1472255906895888536': {
+      'name': 'Champion',
+      'category': 'Rank',
+      'color': Color(0xFF9B59B6),
+    },
+    '1472255796149751895': {
+      'name': 'Diamond',
+      'category': 'Rank',
+      'color': Color(0xFF5DADE2),
+    },
+    '1472255689496727624': {
+      'name': 'Platinum',
+      'category': 'Rank',
+      'color': Color(0xFF48C9B0),
+    },
+    '1472255533095321680': {
+      'name': 'Gold',
+      'category': 'Rank',
+      'color': Color(0xFFFFD700),
+    },
+    '1472255376446460097': {
+      'name': 'Silver',
+      'category': 'Rank',
+      'color': Color(0xFFBDC3C7),
+    },
+    '1472255257550786610': {
+      'name': 'Bronze',
+      'category': 'Rank',
+      'color': Color(0xFFCD7F32),
+    },
     // Regions
-    '1472258075699450009': {'name': 'EU', 'category': 'Region', 'color': Color(0xFF3498DB)},
-    '1472258189054447707': {'name': 'NA', 'category': 'Region', 'color': Color(0xFFE74C3C)},
-    '1472258244725444711': {'name': 'MENA', 'category': 'Region', 'color': Color(0xFF2ECC71)},
-    '1472258344659193927': {'name': 'Other', 'category': 'Region', 'color': Color(0xFF95A5A6)},
+    '1472258075699450009': {
+      'name': 'EU',
+      'category': 'Region',
+      'color': Color(0xFF3498DB),
+    },
+    '1472258189054447707': {
+      'name': 'NA',
+      'category': 'Region',
+      'color': Color(0xFFE74C3C),
+    },
+    '1472258244725444711': {
+      'name': 'MENA',
+      'category': 'Region',
+      'color': Color(0xFF2ECC71),
+    },
+    '1472258344659193927': {
+      'name': 'Other',
+      'category': 'Region',
+      'color': Color(0xFF95A5A6),
+    },
     // Platforms
-    '1472258403094106132': {'name': 'PC', 'category': 'Platform', 'color': Color(0xFF6C63FF)},
-    '1472258460484898978': {'name': 'PlayStation', 'category': 'Platform', 'color': Color(0xFF003087)},
-    '1472258609797922917': {'name': 'Xbox', 'category': 'Platform', 'color': Color(0xFF107C10)},
-    '1472258550255325367': {'name': 'Switch', 'category': 'Platform', 'color': Color(0xFFE4000F)},
+    '1472258403094106132': {
+      'name': 'PC',
+      'category': 'Platform',
+      'color': Color(0xFF6C63FF),
+    },
+    '1472258460484898978': {
+      'name': 'PlayStation',
+      'category': 'Platform',
+      'color': Color(0xFF003087),
+    },
+    '1472258609797922917': {
+      'name': 'Xbox',
+      'category': 'Platform',
+      'color': Color(0xFF107C10),
+    },
+    '1472258550255325367': {
+      'name': 'Switch',
+      'category': 'Platform',
+      'color': Color(0xFFE4000F),
+    },
     // Notifications
-    '1474677783572516984': {'name': 'Tournaments', 'category': 'Notifications', 'color': Color(0xFFFF6B6B)},
-    '1474678114033340559': {'name': 'Scrims', 'category': 'Notifications', 'color': Color(0xFF6C63FF)},
-    '1474678614367932426': {'name': 'YouTube', 'category': 'Notifications', 'color': Color(0xFFFF0000)},
+    '1474677783572516984': {
+      'name': 'Tournaments',
+      'category': 'Notifications',
+      'color': Color(0xFFFF6B6B),
+    },
+    '1474678114033340559': {
+      'name': 'Scrims',
+      'category': 'Notifications',
+      'color': Color(0xFF6C63FF),
+    },
+    '1474678614367932426': {
+      'name': 'YouTube',
+      'category': 'Notifications',
+      'color': Color(0xFFFF0000),
+    },
   };
 
   @override
@@ -1533,18 +1812,24 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildRoleCategory(String category, List<MapEntry<String, Map<String, dynamic>>> roles) {
+  Widget _buildRoleCategory(
+    String category,
+    List<MapEntry<String, Map<String, dynamic>>> roles,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Text(category,
-              style: const TextStyle(
-                  color: Colors.white54,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1)),
+          child: Text(
+            category,
+            style: const TextStyle(
+              color: Colors.white54,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1,
+            ),
+          ),
         ),
         Container(
           decoration: BoxDecoration(
@@ -1562,12 +1847,19 @@ class _SettingsPageState extends State<SettingsPage> {
               final color = role['color'] as Color;
 
               return GestureDetector(
-                onTap: _rolesLoading ? null : () => _toggleRole(roleId, !isSelected),
+                onTap: _rolesLoading
+                    ? null
+                    : () => _toggleRole(roleId, !isSelected),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: isSelected ? color.withValues(alpha: 0.2) : const Color(0xFF1A1A2E),
+                    color: isSelected
+                        ? color.withValues(alpha: 0.2)
+                        : const Color(0xFF1A1A2E),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isSelected ? color : Colors.white12,
@@ -1578,7 +1870,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     role['name'] as String,
                     style: TextStyle(
                       color: isSelected ? color : Colors.white54,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                       fontSize: 13,
                     ),
                   ),
@@ -1617,7 +1911,9 @@ class _SettingsPageState extends State<SettingsPage> {
               decoration: BoxDecoration(
                 color: const Color(0xFF12121A),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF6C63FF).withOpacity(0.3)),
+                border: Border.all(
+                  color: const Color(0xFF6C63FF).withOpacity(0.3),
+                ),
               ),
               child: Row(
                 children: [
@@ -1628,21 +1924,31 @@ class _SettingsPageState extends State<SettingsPage> {
                         : null,
                     backgroundColor: const Color(0xFF6C63FF),
                     child: widget.user.avatar == null
-                        ? Text(widget.user.username[0].toUpperCase(),
-                            style: const TextStyle(color: Colors.white, fontSize: 24))
+                        ? Text(
+                            widget.user.username[0].toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                            ),
+                          )
                         : null,
                   ),
                   const SizedBox(width: 16),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(widget.user.nickname,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold)),
-                      Text('@${widget.user.username}',
-                          style: const TextStyle(color: Colors.white54)),
+                      Text(
+                        widget.user.nickname,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '@${widget.user.username}',
+                        style: const TextStyle(color: Colors.white54),
+                      ),
                     ],
                   ),
                 ],
@@ -1652,12 +1958,15 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 24),
 
             // App settings
-            const Text('APP',
-                style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1)),
+            const Text(
+              'APP',
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1,
+              ),
+            ),
             const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(
@@ -1667,20 +1976,29 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Column(
                 children: [
                   SwitchListTile(
-                    title: const Text('Push Notifications',
-                        style: TextStyle(color: Colors.white)),
-                    subtitle: const Text('Receive app notifications',
-                        style: TextStyle(color: Colors.white54, fontSize: 12)),
+                    title: const Text(
+                      'Push Notifications',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    subtitle: const Text(
+                      'Receive app notifications',
+                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
                     value: _notificationsEnabled,
                     activeColor: const Color(0xFF6C63FF),
-                    onChanged: (val) => setState(() => _notificationsEnabled = val),
+                    onChanged: (val) =>
+                        setState(() => _notificationsEnabled = val),
                   ),
                   const Divider(color: Colors.white12, height: 1),
                   SwitchListTile(
-                    title: const Text('Dark Mode',
-                        style: TextStyle(color: Colors.white)),
-                    subtitle: const Text('Toggle dark/light theme',
-                        style: TextStyle(color: Colors.white54, fontSize: 12)),
+                    title: const Text(
+                      'Dark Mode',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    subtitle: const Text(
+                      'Toggle dark/light theme',
+                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
                     value: _isDarkMode,
                     activeColor: const Color(0xFF6C63FF),
                     onChanged: (val) => setState(() => _isDarkMode = val),
@@ -1694,35 +2012,45 @@ class _SettingsPageState extends State<SettingsPage> {
             // Roles section
             Row(
               children: [
-                const Text('YOUR ROLES',
-                    style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1)),
+                const Text(
+                  'YOUR ROLES',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1,
+                  ),
+                ),
                 if (_rolesLoading) ...[
                   const SizedBox(width: 8),
                   const SizedBox(
                     width: 12,
                     height: 12,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Color(0xFF6C63FF)),
+                      strokeWidth: 2,
+                      color: Color(0xFF6C63FF),
+                    ),
                   ),
                 ],
               ],
             ),
             const SizedBox(height: 8),
-            ...categories.entries.map((e) => _buildRoleCategory(e.key, e.value)),
+            ...categories.entries.map(
+              (e) => _buildRoleCategory(e.key, e.value),
+            ),
 
             const SizedBox(height: 8),
 
             // About section
-            const Text('ABOUT',
-                style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1)),
+            const Text(
+              'ABOUT',
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1,
+              ),
+            ),
             const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(
@@ -1732,17 +2060,25 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Column(
                 children: [
                   ListTile(
-                    title: const Text('Version',
-                        style: TextStyle(color: Colors.white)),
-                    trailing: const Text('2.3.2',
-                        style: TextStyle(color: Colors.white54)),
+                    title: const Text(
+                      'Version',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    trailing: const Text(
+                      '2.3.2',
+                      style: TextStyle(color: Colors.white54),
+                    ),
                   ),
                   const Divider(color: Colors.white12, height: 1),
                   ListTile(
-                    title: const Text('Fusion Esports',
-                        style: TextStyle(color: Colors.white)),
-                    trailing: const Text('© 2026',
-                        style: TextStyle(color: Colors.white54)),
+                    title: const Text(
+                      'Fusion Esports',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    trailing: const Text(
+                      '© 2026',
+                      style: TextStyle(color: Colors.white54),
+                    ),
                   ),
                 ],
               ),
@@ -1760,10 +2096,14 @@ class _SettingsPageState extends State<SettingsPage> {
                     context: context,
                     builder: (_) => AlertDialog(
                       backgroundColor: const Color(0xFF12121A),
-                      title: const Text('Logout',
-                          style: TextStyle(color: Colors.white)),
-                      content: const Text('Are you sure you want to logout?',
-                          style: TextStyle(color: Colors.white54)),
+                      title: const Text(
+                        'Logout',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      content: const Text(
+                        'Are you sure you want to logout?',
+                        style: TextStyle(color: Colors.white54),
+                      ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
@@ -1774,21 +2114,26 @@ class _SettingsPageState extends State<SettingsPage> {
                             Navigator.pop(context);
                             widget.onLogout();
                           },
-                          child: const Text('Logout',
-                              style: TextStyle(color: Colors.red)),
+                          child: const Text(
+                            'Logout',
+                            style: TextStyle(color: Colors.red),
+                          ),
                         ),
                       ],
                     ),
                   );
                 },
                 icon: const Icon(Icons.logout, color: Colors.white),
-                label: const Text('Logout',
-                    style: TextStyle(color: Colors.white, fontSize: 16)),
+                label: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red.withOpacity(0.2),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: Colors.red.withOpacity(0.5))),
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.red.withOpacity(0.5)),
+                  ),
                 ),
               ),
             ),
