@@ -2065,7 +2065,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       style: TextStyle(color: Colors.white),
                     ),
                     trailing: const Text(
-                      '2.3.2',
+                      '2.3.2/Beta',
                       style: TextStyle(color: Colors.white54),
                     ),
                   ),
