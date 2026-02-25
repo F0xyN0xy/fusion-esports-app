@@ -2256,25 +2256,25 @@ class _SettingsPageState extends State<SettingsPage> {
                 color: const Color(0xFF12121A),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Column(
+              child: const Column(
                 children: [
                   ListTile(
-                    title: const Text(
+                    title: Text(
                       'Version',
                       style: TextStyle(color: Colors.white),
                     ),
-                    trailing: const Text(
+                    trailing: Text(
                       '2.5.7/Beta',
                       style: TextStyle(color: Colors.white54),
                     ),
                   ),
-                  const Divider(color: Colors.white12, height: 1),
+                  Divider(color: Colors.white12, height: 1),
                   ListTile(
-                    title: const Text(
+                    title: Text(
                       'Fusion Esports',
                       style: TextStyle(color: Colors.white),
                     ),
-                    trailing: const Text(
+                    trailing: Text(
                       '© 2026',
                       style: TextStyle(color: Colors.white54),
                     ),
