@@ -44,5 +44,7 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Important files
+# Self settings
 /lib/config.dart
+/.qodo
+/.vscode
