@@ -893,7 +893,7 @@ class _SchedulePageState extends State<SchedulePage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Every $weekday at ${hour}:$minute UTC',
+                        'Every $weekday at $hour:$minute UTC',
                         style: const TextStyle(
                           color: Colors.white60,
                           fontSize: 13,
@@ -920,7 +920,7 @@ class _SchedulePageState extends State<SchedulePage> {
                 _ScheduleInfoRow(
                   icon: Icons.access_time,
                   label: 'Start Time',
-                  value: '${hour}:$minute UTC (${hour + 1}:$minute CET)',
+                  value: '$hour:$minute UTC (${hour + 1}:$minute CET)',
                   color: const Color(0xFF4CAF50),
                 ),
                 const SizedBox(height: 24),
@@ -1401,7 +1401,7 @@ class _StatsPageState extends State<StatsPage> {
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
               Text(
-                '${nextLevelXp} XP for Level ${level + 1}',
+                '$nextLevelXp XP for Level ${level + 1}',
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ],
@@ -1985,7 +1985,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       style: TextStyle(color: Colors.white54, fontSize: 12),
                     ),
                     value: _notificationsEnabled,
-                    activeColor: const Color(0xFF6C63FF),
+                    activeThumbColor: const Color(0xFF6C63FF),
                     onChanged: (val) =>
                         setState(() => _notificationsEnabled = val),
                   ),
@@ -2000,7 +2000,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       style: TextStyle(color: Colors.white54, fontSize: 12),
                     ),
                     value: _isDarkMode,
-                    activeColor: const Color(0xFF6C63FF),
+                    activeThumbColor: const Color(0xFF6C63FF),
                     onChanged: (val) => setState(() => _isDarkMode = val),
                   ),
                 ],
