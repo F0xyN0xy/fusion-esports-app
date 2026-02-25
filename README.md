@@ -1,17 +1,28 @@
-# flutter_application_1
+# Fusion Esports App
 
-A new Flutter project.
+Community app for Fusion Esports team members.
 
-## Getting Started
+## Features
+- Discord OAuth login
+- Tournament schedule & countdown
+- XP leaderboard & stats
+- Role management
+- Push notifications
+- Announcements
 
-This project is a starting point for a Flutter application.
+## Download
 
-A few resources to get you started if this is your first Flutter project:
+### Android
+1. Go to [Releases](../../releases)
+2. Download `app-release.apk`
+3. Allow "Install from unknown sources" in settings
+4. Install APK
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+### iOS (Sideloading required)
+iOS requires Xcode build or AltStore. Contact team admin for TestFlight invite.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Build from Source
+
+```bash
+flutter pub get
+flutter build apk --release

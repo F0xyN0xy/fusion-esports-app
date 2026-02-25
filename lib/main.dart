@@ -9,6 +9,8 @@ import 'dart:convert';
 import 'dart:math';
 import 'firebase_options.dart';
 import 'config.dart';
+import 'feedback_system.dart';
+import 'discord_chat.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -30,7 +32,7 @@ class DiscordUser {
   final List<String> roles;
   final String accessToken;
 
-  DiscordUser({
+  const DiscordUser({
     required this.id,
     required this.username,
     this.avatar,
@@ -52,21 +54,49 @@ class DiscordUser {
 }
 
 // ── APP ────────────────────────────────────────────────────────────────────
-class FusionApp extends StatelessWidget {
+class FusionApp extends StatefulWidget {
   const FusionApp({super.key});
+
+  static _FusionAppState? of(BuildContext context) =>
+      context.findAncestorStateOfType<_FusionAppState>();
+
+  @override
+  State<FusionApp> createState() => _FusionAppState();
+}
+
+class _FusionAppState extends State<FusionApp> {
+  ThemeMode _themeMode = ThemeMode.dark;
+
+  void setThemeMode(ThemeMode mode) {
+    setState(() => _themeMode = mode);
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Fusion Esports',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
+      themeMode: _themeMode,
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF6C63FF),
           brightness: Brightness.dark,
         ),
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFF0A0A0F),
+        navigationBarTheme: const NavigationBarThemeData(
+          backgroundColor: Color(0xFF12121A),
+        ),
+      ),
+      theme: ThemeData(
+        brightness: Brightness.light,
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6C63FF)),
+        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+        navigationBarTheme: const NavigationBarThemeData(
+          backgroundColor: Colors.white,
+        ),
       ),
       home: const AuthWrapper(),
     );
@@ -113,10 +143,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
     setState(() => _isLoading = true);
     try {
       final response = await http.get(
-        Uri.parse(
-          'https://fusion-esports.netlify.app/api/discord_auth?code=$code',
-        ),
+        Uri.parse('${Config.discordAuthEndpoint}?code=$code'), // ✅ Fixed space
       );
+
       if (response.statusCode == 200) {
         final user = DiscordUser.fromJson(jsonDecode(response.body));
         setState(() => _user = user);
@@ -137,13 +166,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _loginWithDiscord() async {
-    const clientId = '1473722302968631588';
-    const redirectUri = 'https://fusion-esports.netlify.app/auth/callback';
-    const scope = 'identify guilds.members.read';
-    final url = Uri.parse(
-      'https://discord.com/oauth2/authorize?client_id=$clientId&redirect_uri=${Uri.encodeComponent(redirectUri)}&response_type=code&scope=${Uri.encodeComponent(scope)}',
+    await launchUrl(
+      Uri.parse(Config.discordAuthUrl), // ✅ Uses config
+      mode: LaunchMode.externalApplication,
     );
-    await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
   void _logout() => setState(() => _user = null);
@@ -390,30 +416,60 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isBetaTester = DiscordChatSystem.isAuthorizedBetaTester(widget.user);
+    
     final pages = [
       HomePage(user: widget.user),
       const SchedulePage(),
       StatsPage(user: widget.user),
       const NewsPage(),
+      // Chat page - locked or unlocked
+      isBetaTester 
+          ? DiscordChatPage(user: widget.user)
+          : const LockedChatPage(),
       SettingsPage(user: widget.user, onLogout: widget.onLogout),
+    ];
+    
+    final destinations = [
+      const NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
+      const NavigationDestination(icon: Icon(Icons.calendar_month), label: 'Schedule'),
+      const NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Stats'),
+      const NavigationDestination(icon: Icon(Icons.newspaper), label: 'News'),
+      // Chat with lock indicator
+      NavigationDestination(
+        icon: Icon(
+          isBetaTester ? Icons.chat_bubble : Icons.lock_outline,
+          color: isBetaTester ? null : Colors.orange,
+        ),
+        label: isBetaTester ? 'Chat' : 'Locked',
+      ),
+      const NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
     ];
 
     return Scaffold(
       body: pages[_currentIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
-        onDestinationSelected: (index) => setState(() => _currentIndex = index),
+        onDestinationSelected: (index) {
+          // Prevent accessing locked chat
+          if (index == 4 && !isBetaTester) {
+            _showLockedMessage();
+            return;
+          }
+          setState(() => _currentIndex = index);
+        },
         backgroundColor: const Color(0xFF12121A),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month),
-            label: 'Schedule',
-          ),
-          NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Stats'),
-          NavigationDestination(icon: Icon(Icons.newspaper), label: 'News'),
-          NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
-        ],
+        destinations: destinations,
+      ),
+    );
+  }
+  
+  void _showLockedMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('🔒 Beta chat is locked. Full release coming soon.'),
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 2),
       ),
     );
   }
@@ -422,7 +478,7 @@ class _MainPageState extends State<MainPage> {
 // ── DATA FETCHING ──────────────────────────────────────────────────────────
 Future<Map<String, dynamic>> fetchBinData() async {
   final response = await http.get(
-    Uri.parse('https://api.jsonbin.io/v3/b/${Config.jsonBinId}/latest'),
+    Uri.parse(Config.jsonBinUrl),
     headers: {'X-Master-Key': Config.jsonBinApiKey},
   );
   if (response.statusCode == 200) {
@@ -443,89 +499,107 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late Future<Map<String, dynamic>> _data;
+  Timer? _timer;
+  Duration _timeUntilTournament = Duration.zero;
+  Map<String, dynamic>? _tournament;
 
   @override
   void initState() {
     super.initState();
     _data = fetchBinData();
+    _data.then((data) {
+      _tournament = data['tournament'];
+      _updateCountdown();
+      _timer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => _updateCountdown(),
+      );
+    });
   }
 
-  String _getNextTournament(Map<String, dynamic> tournament) {
-    final now = DateTime.now();
-    final dayOfWeek = tournament['dayOfWeek'];
-    final hour = tournament['hour'];
-    final minute = tournament['minute'];
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
+  void _updateCountdown() {
+    if (_tournament == null) return;
+    final now = DateTime.now();
     var next = DateTime.utc(
       now.year,
       now.month,
       now.day,
-      hour,
-      minute,
+      _tournament!['hour'],
+      _tournament!['minute'],
     ).toLocal();
-    while (next.weekday != dayOfWeek) {
+    while (next.weekday != _tournament!['dayOfWeek']) {
       next = next.add(const Duration(days: 1));
     }
     if (!next.isAfter(now)) next = next.add(const Duration(days: 7));
+    setState(() => _timeUntilTournament = next.difference(now));
+  }
 
-    final diff = next.difference(now);
-    final days = diff.inDays;
-    final hours = diff.inHours % 24;
-    final minutes = diff.inMinutes % 60;
-
-    if (days > 0) return 'In ${days}d ${hours}h ${minutes}m';
-    if (hours > 0) return 'In ${hours}h ${minutes}m';
-    return 'In ${minutes}m';
+  String get _countdownText {
+    final d = _timeUntilTournament;
+    if (d.inDays > 0) {
+      return '${d.inDays}d ${d.inHours % 24}h ${d.inMinutes % 60}m';
+    }
+    if (d.inHours > 0) {
+      return '${d.inHours}h ${d.inMinutes % 60}m ${d.inSeconds % 60}s';
+    }
+    return '${d.inMinutes}m ${d.inSeconds % 60}s';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0F),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _data,
         builder: (context, snapshot) {
           final memberCount = snapshot.data?['memberCount'] ?? '...';
-          final tournament = snapshot.data?['tournament'];
           final lastWinner = snapshot.data?['lastWinner'];
-          final nextTournament = tournament != null
-              ? _getNextTournament(tournament)
-              : '...';
-          final tournamentName = tournament?['name'] ?? 'Tournament';
+          final tournamentName =
+              snapshot.data?['tournament']?['name'] ?? 'Tournament';
+          final socials = snapshot.data != null
+              ? List<Map<String, dynamic>>.from(snapshot.data!['socials'])
+              : <Map<String, dynamic>>[];
 
           return CustomScrollView(
             slivers: [
+              // ── HEADER ──
               SliverAppBar(
-                expandedHeight: 200,
+                expandedHeight: 220,
                 floating: false,
                 pinned: true,
+                backgroundColor: const Color(0xFF0A0A0F),
                 actions: [
                   Padding(
-                    padding: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.only(right: 12),
                     child: GestureDetector(
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            backgroundColor: const Color(0xFF12121A),
-                            title: Text(
-                              widget.user.nickname,
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                            content: Text(
-                              '@${widget.user.username}',
-                              style: const TextStyle(color: Colors.white54),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Close'),
-                              ),
-                            ],
+                      onTap: () => showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          backgroundColor: const Color(0xFF12121A),
+                          title: Text(
+                            widget.user.nickname,
+                            style: const TextStyle(color: Colors.white),
                           ),
-                        );
-                      },
+                          content: Text(
+                            '@${widget.user.username}',
+                            style: const TextStyle(color: Colors.white54),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Close'),
+                            ),
+                          ],
+                        ),
+                      ),
                       child: CircleAvatar(
-                        radius: 18,
+                        radius: 20,
                         backgroundImage: widget.user.avatar != null
                             ? NetworkImage(widget.user.avatar!)
                             : null,
@@ -541,56 +615,175 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
-                  title: const Text(
-                    'Fusion Esports',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
                   background: Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Color(0xFF6C63FF), Color(0xFF0A0A0F)],
-                        begin: Alignment.topCenter,
+                        colors: [
+                          Color(0xFF3D35CC),
+                          Color(0xFF6C63FF),
+                          Color(0xFF0A0A0F),
+                        ],
+                        begin: Alignment.topLeft,
                         end: Alignment.bottomCenter,
+                        stops: [0.0, 0.4, 1.0],
+                      ),
+                    ),
+                    child: SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.asset(
+                                    'assets/icon.png',
+                                    width: 48,
+                                    height: 48,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Fusion Esports',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Welcome back, ${widget.user.nickname}! 👋',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
+
               SliverPadding(
                 padding: const EdgeInsets.all(16),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    // Welcome message
-                    Text(
-                      'Welcome back, ${widget.user.nickname}!',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 15,
-                      ),
+                    // ── STATS GRID ──
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.people_alt_rounded,
+                            label: 'Members',
+                            value: memberCount.toString(),
+                            color: const Color(0xFF6C63FF),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.emoji_events_rounded,
+                            label: 'Next $tournamentName',
+                            value: snapshot.data != null
+                                ? _countdownText
+                                : '...',
+                            color: const Color(0xFFFF6B6B),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    _InfoCard(
-                      icon: Icons.people,
-                      title: 'Discord Members',
-                      value: memberCount.toString(),
-                      color: const Color(0xFF6C63FF),
-                    ),
+
                     const SizedBox(height: 12),
-                    _InfoCard(
-                      icon: Icons.emoji_events,
-                      title: 'Next $tournamentName',
-                      value: nextTournament,
-                      color: const Color(0xFFFF6B6B),
-                    ),
-                    const SizedBox(height: 12),
+
+                    // ── LAST WINNER ──
                     if (lastWinner != null)
-                      _InfoCard(
-                        icon: Icons.military_tech,
-                        title: 'Last Winner',
-                        value: lastWinner['first'] ?? 'TBD',
-                        color: const Color(0xFFFFD700),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFFFFD700).withValues(alpha: 0.15),
+                              const Color(0xFF12121A),
+                            ],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(
+                              0xFFFFD700,
+                            ).withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFFFFD700,
+                                ).withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.military_tech_rounded,
+                                color: Color(0xFFFFD700),
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Last Tournament Winner',
+                                    style: TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  Text(
+                                    lastWinner['first'] ?? 'TBD',
+                                    style: const TextStyle(
+                                      color: Color(0xFFFFD700),
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  if (lastWinner['date'] != null)
+                                    Text(
+                                      lastWinner['date'],
+                                      style: const TextStyle(
+                                        color: Colors.white38,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.workspace_premium_rounded,
+                              color: Color(0xFFFFD700),
+                              size: 32,
+                            ),
+                          ],
+                        ),
                       ),
+
                     const SizedBox(height: 24),
+
+                    // ── SOCIALS ──
                     const Text(
                       'Socials',
                       style: TextStyle(
@@ -600,10 +793,8 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    if (snapshot.data != null)
-                      ...List<Map<String, dynamic>>.from(
-                        snapshot.data!['socials'],
-                      ).map((social) => _SocialCard(social: social)),
+                    ...socials.map((social) => _SocialCard(social: social)),
+                    const SizedBox(height: 16),
                   ]),
                 ),
               ),
@@ -615,15 +806,15 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _InfoCard extends StatelessWidget {
+class _StatCard extends StatelessWidget {
   final IconData icon;
-  final String title;
+  final String label;
   final String value;
   final Color color;
 
-  const _InfoCard({
+  const _StatCard({
     required this.icon,
-    required this.title,
+    required this.label,
     required this.value,
     required this.color,
   });
@@ -634,36 +825,33 @@ class _InfoCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF12121A),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(8),
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: color, size: 28),
+            child: Icon(icon, color: color, size: 22),
           ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(color: Colors.white54, fontSize: 13),
-              ),
-              Text(
-                value,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -710,27 +898,33 @@ class _SocialCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final platform = social['platform'] ?? '';
     final color = _getColor(platform);
-    final url = social['url'] ?? '';
 
     return GestureDetector(
       onTap: () async {
-        final uri = Uri.parse(url);
+        final uri = Uri.parse(social['url'] ?? '');
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
         }
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: const Color(0xFF12121A),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
         ),
         child: Row(
           children: [
-            Icon(_getIcon(platform), color: color, size: 24),
-            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(_getIcon(platform), color: color, size: 22),
+            ),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -749,9 +943,9 @@ class _SocialCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              color: Colors.white24,
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: color.withValues(alpha: 0.5),
               size: 14,
             ),
           ],
@@ -2001,7 +2195,12 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     value: _isDarkMode,
                     activeThumbColor: const Color(0xFF6C63FF),
-                    onChanged: (val) => setState(() => _isDarkMode = val),
+                    onChanged: (val) {
+                      setState(() => _isDarkMode = val);
+                      FusionApp.of(
+                        context,
+                      )?.setThemeMode(val ? ThemeMode.dark : ThemeMode.light);
+                    },
                   ),
                 ],
               ),
@@ -2065,7 +2264,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       style: TextStyle(color: Colors.white),
                     ),
                     trailing: const Text(
-                      '2.3.2/Beta',
+                      '2.5.7/Beta',
                       style: TextStyle(color: Colors.white54),
                     ),
                   ),
@@ -2078,6 +2277,75 @@ class _SettingsPageState extends State<SettingsPage> {
                     trailing: const Text(
                       '© 2026',
                       style: TextStyle(color: Colors.white54),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Feedback & Bug Report section
+            const Text(
+              'FEEDBACK',
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF12121A),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(
+                      Icons.feedback,
+                      color: Color(0xFF6C63FF),
+                    ),
+                    title: const Text(
+                      'Send Feedback',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    subtitle: const Text(
+                      'Suggest features or improvements',
+                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
+                    trailing: const Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.white54,
+                      size: 16,
+                    ),
+                    onTap: () => FeedbackSystem.showFeedbackDialog(
+                      context,
+                      user: widget.user,
+                    ),
+                  ),
+                  const Divider(color: Colors.white12, height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.bug_report, color: Colors.orange),
+                    title: const Text(
+                      'Report a Bug',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    subtitle: const Text(
+                      'Something not working right?',
+                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
+                    trailing: const Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.white54,
+                      size: 16,
+                    ),
+                    onTap: () => FeedbackSystem.showBugReportDialog(
+                      context,
+                      user: widget.user,
+                      currentScreen: 'Settings', // You can make this dynamic
                     ),
                   ),
                 ],
@@ -2132,7 +2400,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   backgroundColor: Colors.red.withOpacity(0.2),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.red.withOpacity(0.5)),
+                    side: BorderSide(color: Colors.red.withValues(alpha: 0.5)),
                   ),
                 ),
               ),
