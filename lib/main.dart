@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'firebase_options.dart';
 import 'config.dart';
 
@@ -171,10 +172,17 @@ class _AuthWrapperState extends State<AuthWrapper> {
 }
 
 // ── LOGIN PAGE ─────────────────────────────────────────────────────────────
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   final VoidCallback onLogin;
 
   const LoginPage({super.key, required this.onLogin});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  bool _accepted = false;
 
   @override
   Widget build(BuildContext context) {
@@ -202,7 +210,7 @@ class LoginPage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF6C63FF).withOpacity(0.4),
+                        color: const Color(0xFF6C63FF).withValues(alpha: 0.4),
                         blurRadius: 30,
                         spreadRadius: 5,
                       ),
@@ -229,12 +237,59 @@ class LoginPage extends StatelessWidget {
                   style: TextStyle(color: Colors.white54, fontSize: 16),
                 ),
                 const Spacer(),
+                // ToS acceptance
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Checkbox(
+                      value: _accepted,
+                      onChanged: (val) => setState(() => _accepted = val ?? false),
+                      activeColor: const Color(0xFF6C63FF),
+                      side: const BorderSide(color: Colors.white38),
+                    ),
+                    Expanded(
+                      child: Wrap(
+                        children: [
+                          const Text('I agree to the ',
+                              style: TextStyle(color: Colors.white54, fontSize: 13)),
+                          GestureDetector(
+                            onTap: () => launchUrl(
+                              Uri.parse('https://fusion-esports.netlify.app/terms'),
+                              mode: LaunchMode.externalApplication,
+                            ),
+                            child: const Text('Terms of Service',
+                                style: TextStyle(
+                                    color: Color(0xFF6C63FF),
+                                    fontSize: 13,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: Color(0xFF6C63FF))),
+                          ),
+                          const Text(' and ',
+                              style: TextStyle(color: Colors.white54, fontSize: 13)),
+                          GestureDetector(
+                            onTap: () => launchUrl(
+                              Uri.parse('https://fusion-esports.netlify.app/privacy'),
+                              mode: LaunchMode.externalApplication,
+                            ),
+                            child: const Text('Privacy Policy',
+                                style: TextStyle(
+                                    color: Color(0xFF6C63FF),
+                                    fontSize: 13,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: Color(0xFF6C63FF))),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
                 // Login button
                 SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton.icon(
-                    onPressed: onLogin,
+                    onPressed: _accepted ? widget.onLogin : null,
                     icon: const Icon(Icons.discord, size: 24),
                     label: const Text(
                       'Login with Discord',
@@ -243,6 +298,8 @@ class LoginPage extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF5865F2),
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFF5865F2).withValues(alpha: 0.3),
+                      disabledForegroundColor: Colors.white38,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -250,10 +307,27 @@ class LoginPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'By logging in you agree to our terms of service',
-                  style: TextStyle(color: Colors.white24, fontSize: 12),
-                  textAlign: TextAlign.center,
+                // Join Discord button
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: OutlinedButton.icon(
+                    onPressed: () => launchUrl(
+                      Uri.parse('https://discord.gg/Nsng7acTP7'),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    icon: const Icon(Icons.group_add, size: 20, color: Colors.white54),
+                    label: const Text(
+                      'Join our Discord first',
+                      style: TextStyle(color: Colors.white54, fontSize: 14),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.white12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 32),
               ],
@@ -284,7 +358,7 @@ class _MainPageState extends State<MainPage> {
     final pages = [
       HomePage(user: widget.user),
       const SchedulePage(),
-      const StatsPage(),
+      StatsPage(user: widget.user),
       const NewsPage(),
       SettingsPage(user: widget.user, onLogout: widget.onLogout),
     ];
@@ -862,20 +936,334 @@ class _WinnerCard extends StatelessWidget {
 }
 
 // ── STATS PAGE ─────────────────────────────────────────────────────────────
-class StatsPage extends StatelessWidget {
-  const StatsPage({super.key});
+class StatsPage extends StatefulWidget {
+  final DiscordUser user;
+
+  const StatsPage({super.key, required this.user});
+
+  @override
+  State<StatsPage> createState() => _StatsPageState();
+}
+
+class _StatsPageState extends State<StatsPage> {
+  late Future<Map<String, dynamic>> _xpData;
+  bool _showLeaderboard = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _xpData = _fetchXPData();
+  }
+
+  Future<Map<String, dynamic>> _fetchXPData() async {
+    final response = await http.get(
+      Uri.parse('https://api.jsonbin.io/v3/b/${Config.xpBinId}/latest'),
+      headers: {'X-Master-Key': Config.jsonBinApiKey},
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['record'];
+    }
+    throw Exception('Failed to load XP data');
+  }
+
+  int _getLevel(int xp) => (0.1 * sqrt(xp.toDouble())).floor();
+  int _xpForLevel(int level) => pow(level / 0.1, 2).toInt();
+  int _xpForNextLevel(int level) => pow((level + 1) / 0.1, 2).toInt();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Player Stats'),
+        title: const Text('Stats'),
         backgroundColor: const Color(0xFF12121A),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => setState(() => _xpData = _fetchXPData()),
+          ),
+        ],
       ),
-      body: const Center(
-        child: Text('Stats coming soon',
-            style: TextStyle(color: Colors.white54)),
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _xpData,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+                child: CircularProgressIndicator(color: Color(0xFF6C63FF)));
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                  const SizedBox(height: 12),
+                  const Text('Failed to load stats',
+                      style: TextStyle(color: Colors.white54)),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () => setState(() => _xpData = _fetchXPData()),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final data = snapshot.data!;
+          final myStats = data[widget.user.id];
+
+          // Sort leaderboard
+          final sorted = data.entries.toList()
+            ..sort((a, b) => (b.value['xp'] as int).compareTo(a.value['xp'] as int));
+
+          final myRank = sorted.indexWhere((e) => e.key == widget.user.id) + 1;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // My stats card
+                if (myStats != null) ...[
+                  _buildMyStatsCard(myStats, myRank),
+                  const SizedBox(height: 24),
+                ] else ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF12121A),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: const Text(
+                      'No stats yet — start chatting in the server to earn XP!',
+                      style: TextStyle(color: Colors.white54),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                // Leaderboard toggle
+                GestureDetector(
+                  onTap: () => setState(() => _showLeaderboard = !_showLeaderboard),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF12121A),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: const Color(0xFF6C63FF).withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.leaderboard,
+                            color: Color(0xFF6C63FF), size: 22),
+                        const SizedBox(width: 12),
+                        const Text('Leaderboard',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16)),
+                        const Spacer(),
+                        Icon(
+                          _showLeaderboard
+                              ? Icons.keyboard_arrow_up
+                              : Icons.keyboard_arrow_down,
+                          color: Colors.white54,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                if (_showLeaderboard) ...[
+                  const SizedBox(height: 8),
+                  ...sorted.take(10).toList().asMap().entries.map((entry) {
+                    final rank = entry.key + 1;
+                    final userId = entry.value.key;
+                    final stats = entry.value.value;
+                    final xp = stats['xp'] as int;
+                    final level = _getLevel(xp);
+                    final isMe = userId == widget.user.id;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isMe
+                            ? const Color(0xFF6C63FF).withValues(alpha: 0.15)
+                            : const Color(0xFF12121A),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isMe
+                              ? const Color(0xFF6C63FF).withValues(alpha: 0.5)
+                              : Colors.white12,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 32,
+                            child: Text(
+                              rank == 1
+                                  ? '🥇'
+                                  : rank == 2
+                                      ? '🥈'
+                                      : rank == 3
+                                          ? '🥉'
+                                          : '#$rank',
+                              style: const TextStyle(
+                                  color: Colors.white54, fontSize: 14),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isMe
+                                      ? widget.user.nickname
+                                      : 'User #${userId.substring(userId.length - 4)}',
+                                  style: TextStyle(
+                                    color: isMe
+                                        ? const Color(0xFF6C63FF)
+                                        : Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text('Level $level • $xp XP',
+                                    style: const TextStyle(
+                                        color: Colors.white54, fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+              ],
+            ),
+          );
+        },
       ),
+    );
+  }
+
+  Widget _buildMyStatsCard(Map<String, dynamic> stats, int rank) {
+    final xp = stats['xp'] as int;
+    final messages = stats['messages'] as int? ?? 0;
+    final vcMinutes = stats['vcMinutes'] as int? ?? 0;
+    final level = _getLevel(xp);
+    final currentLevelXp = _xpForLevel(level);
+    final nextLevelXp = _xpForNextLevel(level);
+    final progress = (xp - currentLevelXp) / (nextLevelXp - currentLevelXp);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6C63FF), Color(0xFF3D35CC)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundImage: widget.user.avatar != null
+                    ? NetworkImage(widget.user.avatar!)
+                    : null,
+                backgroundColor: Colors.white24,
+                child: widget.user.avatar == null
+                    ? Text(widget.user.username[0].toUpperCase(),
+                        style: const TextStyle(color: Colors.white, fontSize: 22))
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.user.nickname,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold)),
+                    Text('Rank #$rank on the server',
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 13)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text('Level $level',
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // XP Progress bar
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('$xp XP',
+                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              Text('${nextLevelXp} XP for Level ${level + 1}',
+                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress.clamp(0.0, 1.0),
+              backgroundColor: Colors.white24,
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              minHeight: 8,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Stats row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _statItem('Messages', messages.toString(), Icons.chat_bubble),
+              _statItem('VC Time', '${vcMinutes}m', Icons.headset),
+              _statItem('Total XP', xp.toString(), Icons.star),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statItem(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.white70, size: 20),
+        const SizedBox(height: 4),
+        Text(value,
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+        Text(label,
+            style: const TextStyle(color: Colors.white70, fontSize: 11)),
+      ],
     );
   }
 }
