@@ -64,25 +64,24 @@ class DiscordChatSystem {
   }
 
   static Future<void> sendMessage({
-  required DiscordUser user,
-  required String text,
-}) async {
-  if (text.trim().isEmpty) return;
-  
-  final response = await http.post(
-    Uri.parse(_sendMessageUrl),
-    headers: {'Content-Type': 'application/json'},
-    body: jsonEncode({
-      'channelId': _chatChannelId,
-      'message': text.trim(),
-      'username': user.nickname,
-      'userId': user.id,
-      'avatar': user.avatar,
-    }),
-  );
-  
-  if (response.statusCode != 200) {
-    throw Exception('Failed to send: ${response.statusCode}');
+    required DiscordUser user,
+    required String text,
+  }) async {
+    if (text.trim().isEmpty) return;
+
+    final response = await http.post(
+      Uri.parse(_sendMessageUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'channelId': _chatChannelId,
+        'message': text.trim(),
+        'username': user.nickname,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to send: ${response.statusCode}');
+    }
   }
 }
 
