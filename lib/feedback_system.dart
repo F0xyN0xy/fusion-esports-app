@@ -6,7 +6,7 @@ import 'main.dart';
 
 class FeedbackSystem {
   static const String _feedbackWebhook = '${Config.baseUrl}/api/feedback';
-  
+
   /// Show feedback dialog
   static void showFeedbackDialog(BuildContext context, {DiscordUser? user}) {
     showModalBottomSheet(
@@ -16,23 +16,25 @@ class FeedbackSystem {
       builder: (context) => _FeedbackSheet(user: user),
     );
   }
-  
+
   /// Show bug report dialog
-  static void showBugReportDialog(BuildContext context, {DiscordUser? user, String? currentScreen}) {
+  static void showBugReportDialog(BuildContext context,
+      {DiscordUser? user, String? currentScreen}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _BugReportSheet(user: user, currentScreen: currentScreen),
+      builder: (context) =>
+          _BugReportSheet(user: user, currentScreen: currentScreen),
     );
   }
 }
 
 class _FeedbackSheet extends StatefulWidget {
   final DiscordUser? user;
-  
+
   const _FeedbackSheet({this.user});
-  
+
   @override
   State<_FeedbackSheet> createState() => _FeedbackSheetState();
 }
@@ -43,25 +45,25 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
   String _category = 'general';
   bool _isSubmitting = false;
   double _rating = 0;
-  
+
   final List<Map<String, dynamic>> _categories = [
     {'id': 'general', 'name': 'General Feedback', 'icon': Icons.chat_bubble},
     {'id': 'feature', 'name': 'Feature Request', 'icon': Icons.lightbulb},
     {'id': 'ui', 'name': 'UI/Design', 'icon': Icons.palette},
     {'id': 'performance', 'name': 'Performance', 'icon': Icons.speed},
   ];
-  
+
   @override
   void dispose() {
     _feedbackController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isSubmitting = true);
-    
+
     try {
       final payload = {
         'type': 'feedback',
@@ -72,13 +74,13 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
         'rating': _rating,
         'message': _feedbackController.text,
       };
-      
+
       final response = await http.post(
         Uri.parse(FeedbackSystem._feedbackWebhook),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(payload),
       );
-      
+
       if (response.statusCode == 200) {
         if (mounted) {
           Navigator.pop(context);
@@ -105,7 +107,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
       if (mounted) setState(() => _isSubmitting = false);
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -143,7 +145,6 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
               ],
             ),
             const SizedBox(height: 16),
-            
             SizedBox(
               height: 40,
               child: ListView.separated(
@@ -153,19 +154,20 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                 itemBuilder: (context, index) {
                   final cat = _categories[index];
                   final isSelected = _category == cat['id'];
-                  
+
                   return GestureDetector(
                     onTap: () => setState(() => _category = cat['id']),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isSelected 
+                        color: isSelected
                             ? const Color(0xFF6C63FF).withValues(alpha: 0.2)
                             : const Color(0xFF1A1A2E),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: isSelected 
+                          color: isSelected
                               ? const Color(0xFF6C63FF)
                               : Colors.white12,
                         ),
@@ -176,7 +178,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                           Icon(
                             cat['icon'],
                             size: 16,
-                            color: isSelected 
+                            color: isSelected
                                 ? const Color(0xFF6C63FF)
                                 : Colors.white54,
                           ),
@@ -186,7 +188,9 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                             style: TextStyle(
                               color: isSelected ? Colors.white : Colors.white54,
                               fontSize: 12,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
                           ),
                         ],
@@ -197,7 +201,6 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            
             Row(
               children: [
                 const Text(
@@ -218,7 +221,6 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
               ],
             ),
             const SizedBox(height: 16),
-            
             TextFormField(
               controller: _feedbackController,
               maxLines: 4,
@@ -249,7 +251,6 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
               },
             ),
             const SizedBox(height: 20),
-            
             SizedBox(
               width: double.infinity,
               height: 50,
@@ -261,7 +262,8 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  disabledBackgroundColor: const Color(0xFF6C63FF).withValues(alpha: 0.3),
+                  disabledBackgroundColor:
+                      const Color(0xFF6C63FF).withValues(alpha: 0.3),
                 ),
                 child: _isSubmitting
                     ? const SizedBox(
@@ -269,12 +271,14 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
                     : const Text(
                         'Send Feedback',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
               ),
             ),
@@ -288,9 +292,9 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
 class _BugReportSheet extends StatefulWidget {
   final DiscordUser? user;
   final String? currentScreen;
-  
+
   const _BugReportSheet({this.user, this.currentScreen});
-  
+
   @override
   State<_BugReportSheet> createState() => _BugReportSheetState();
 }
@@ -302,14 +306,29 @@ class _BugReportSheetState extends State<_BugReportSheet> {
   final _stepsController = TextEditingController();
   String _severity = 'medium';
   bool _isSubmitting = false;
-  
+
   final List<Map<String, dynamic>> _severityLevels = [
     {'id': 'low', 'name': 'Low', 'color': Colors.green, 'desc': 'Minor issue'},
-    {'id': 'medium', 'name': 'Medium', 'color': Colors.orange, 'desc': 'Affects usage'},
-    {'id': 'high', 'name': 'High', 'color': Colors.red, 'desc': 'Breaks feature'},
-    {'id': 'critical', 'name': 'Critical', 'color': Colors.purple, 'desc': 'App crashes'},
+    {
+      'id': 'medium',
+      'name': 'Medium',
+      'color': Colors.orange,
+      'desc': 'Affects usage'
+    },
+    {
+      'id': 'high',
+      'name': 'High',
+      'color': Colors.red,
+      'desc': 'Breaks feature'
+    },
+    {
+      'id': 'critical',
+      'name': 'Critical',
+      'color': Colors.purple,
+      'desc': 'App crashes'
+    },
   ];
-  
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -317,12 +336,12 @@ class _BugReportSheetState extends State<_BugReportSheet> {
     _stepsController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isSubmitting = true);
-    
+
     try {
       final payload = {
         'type': 'bug',
@@ -335,13 +354,13 @@ class _BugReportSheetState extends State<_BugReportSheet> {
         'steps': _stepsController.text,
         'screen': widget.currentScreen,
       };
-      
+
       final response = await http.post(
         Uri.parse(FeedbackSystem._feedbackWebhook),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(payload),
       );
-      
+
       if (response.statusCode == 200) {
         if (mounted) {
           Navigator.pop(context);
@@ -360,7 +379,7 @@ class _BugReportSheetState extends State<_BugReportSheet> {
       if (mounted) setState(() => _isSubmitting = false);
     }
   }
-  
+
   void _showSuccessDialog() {
     showDialog(
       context: context,
@@ -386,7 +405,7 @@ class _BugReportSheetState extends State<_BugReportSheet> {
       ),
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -436,7 +455,6 @@ class _BugReportSheetState extends State<_BugReportSheet> {
                 style: const TextStyle(color: Colors.white38, fontSize: 12),
               ),
               const SizedBox(height: 16),
-              
               const Text(
                 'Severity Level',
                 style: TextStyle(color: Colors.white54, fontSize: 14),
@@ -452,12 +470,12 @@ class _BugReportSheetState extends State<_BugReportSheet> {
                         margin: const EdgeInsets.only(right: 8),
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         decoration: BoxDecoration(
-                          color: isSelected 
+                          color: isSelected
                               ? (level['color'] as Color).withValues(alpha: 0.2)
                               : const Color(0xFF1A1A2E),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: isSelected 
+                            color: isSelected
                                 ? (level['color'] as Color)
                                 : Colors.transparent,
                           ),
@@ -467,9 +485,13 @@ class _BugReportSheetState extends State<_BugReportSheet> {
                             Text(
                               level['name'],
                               style: TextStyle(
-                                color: isSelected ? level['color'] : Colors.white54,
+                                color: isSelected
+                                    ? level['color']
+                                    : Colors.white54,
                                 fontSize: 12,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
                             ),
                             Text(
@@ -487,38 +509,33 @@ class _BugReportSheetState extends State<_BugReportSheet> {
                 }).toList(),
               ),
               const SizedBox(height: 16),
-              
               TextFormField(
                 controller: _titleController,
                 style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration('Bug Title', 'Short summary of the issue'),
-                validator: (value) => value?.trim().isEmpty == true ? 'Required' : null,
+                decoration:
+                    _inputDecoration('Bug Title', 'Short summary of the issue'),
+                validator: (value) =>
+                    value?.trim().isEmpty == true ? 'Required' : null,
               ),
               const SizedBox(height: 12),
-              
               TextFormField(
                 controller: _descriptionController,
                 maxLines: 3,
                 style: const TextStyle(color: Colors.white),
                 decoration: _inputDecoration(
-                  'Description', 
-                  'What happened? What did you expect?'
-                ),
-                validator: (value) => value?.trim().isEmpty == true ? 'Required' : null,
+                    'Description', 'What happened? What did you expect?'),
+                validator: (value) =>
+                    value?.trim().isEmpty == true ? 'Required' : null,
               ),
               const SizedBox(height: 12),
-              
               TextFormField(
                 controller: _stepsController,
                 maxLines: 3,
                 style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration(
-                  'Steps to Reproduce',
-                  '1. Go to...\n2. Click on...\n3. Error occurs'
-                ),
+                decoration: _inputDecoration('Steps to Reproduce',
+                    '1. Go to...\n2. Click on...\n3. Error occurs'),
               ),
               const SizedBox(height: 20),
-              
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -530,13 +547,15 @@ class _BugReportSheetState extends State<_BugReportSheet> {
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
                       : const Icon(Icons.send),
                   label: Text(
                     _isSubmitting ? 'Sending...' : 'Submit Bug Report',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red.withValues(alpha: 0.8),
@@ -554,7 +573,7 @@ class _BugReportSheetState extends State<_BugReportSheet> {
       ),
     );
   }
-  
+
   InputDecoration _inputDecoration(String label, String hint) {
     return InputDecoration(
       labelText: label,
