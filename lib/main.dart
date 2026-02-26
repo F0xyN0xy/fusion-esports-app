@@ -150,14 +150,16 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Future<void> _saveUser(DiscordUser user) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('saved_user', jsonEncode({
-      'id': user.id,
-      'username': user.username,
-      'avatar': user.avatar,
-      'nickname': user.nickname,
-      'roles': user.roles,
-      'accessToken': user.accessToken,
-    }));
+    await prefs.setString(
+        'saved_user',
+        jsonEncode({
+          'id': user.id,
+          'username': user.username,
+          'avatar': user.avatar,
+          'nickname': user.nickname,
+          'roles': user.roles,
+          'accessToken': user.accessToken,
+        }));
   }
 
   Future<void> _clearUser() async {
@@ -454,22 +456,23 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     final isBetaTester = DiscordChatSystem.isAuthorizedBetaTester(widget.user);
-    
+
     final pages = [
       HomePage(user: widget.user),
       const SchedulePage(),
       StatsPage(user: widget.user),
       const NewsPage(),
       // Chat page - locked or unlocked
-      isBetaTester 
+      isBetaTester
           ? DiscordChatPage(user: widget.user)
           : const LockedChatPage(),
       SettingsPage(user: widget.user, onLogout: widget.onLogout),
     ];
-    
+
     final destinations = [
       const NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-      const NavigationDestination(icon: Icon(Icons.calendar_month), label: 'Schedule'),
+      const NavigationDestination(
+          icon: Icon(Icons.calendar_month), label: 'Schedule'),
       const NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Stats'),
       const NavigationDestination(icon: Icon(Icons.newspaper), label: 'News'),
       // Chat with lock indicator
@@ -480,7 +483,8 @@ class _MainPageState extends State<MainPage> {
         ),
         label: isBetaTester ? 'Chat' : 'Locked',
       ),
-      const NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
+      const NavigationDestination(
+          icon: Icon(Icons.settings), label: 'Settings'),
     ];
 
     return Scaffold(
@@ -500,7 +504,7 @@ class _MainPageState extends State<MainPage> {
       ),
     );
   }
-  
+
   void _showLockedMessage() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -731,9 +735,8 @@ class _HomePageState extends State<HomePage> {
                           child: _StatCard(
                             icon: Icons.emoji_events_rounded,
                             label: 'Next $tournamentName',
-                            value: snapshot.data != null
-                                ? _countdownText
-                                : '...',
+                            value:
+                                snapshot.data != null ? _countdownText : '...',
                             color: const Color(0xFFFF6B6B),
                           ),
                         ),
@@ -1490,10 +1493,10 @@ class _StatsPageState extends State<StatsPage> {
                               rank == 1
                                   ? '🥇'
                                   : rank == 2
-                                  ? '🥈'
-                                  : rank == 3
-                                  ? '🥉'
-                                  : '#$rank',
+                                      ? '🥈'
+                                      : rank == 3
+                                          ? '🥉'
+                                          : '#$rank',
                               style: const TextStyle(
                                 color: Colors.white54,
                                 fontSize: 14,
@@ -2101,9 +2104,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     role['name'] as String,
                     style: TextStyle(
                       color: isSelected ? color : Colors.white54,
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.normal,
                       fontSize: 13,
                     ),
                   ),
@@ -2301,7 +2303,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       style: TextStyle(color: Colors.white),
                     ),
                     trailing: Text(
-                      '2.5.7/Beta',
+                      '2.6.7 Beta',
                       style: TextStyle(color: Colors.white54),
                     ),
                   ),
@@ -2382,7 +2384,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     onTap: () => FeedbackSystem.showBugReportDialog(
                       context,
                       user: widget.user,
-                      currentScreen: 'Settings', // You can make this dynamic
+                      currentScreen: 'Settings',
                     ),
                   ),
                 ],
