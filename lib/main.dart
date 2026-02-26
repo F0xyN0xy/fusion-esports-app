@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
@@ -113,13 +114,14 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   DiscordUser? _user;
-  bool _isLoading = false;
+  bool _isLoading = true;
   late AppLinks _appLinks;
   StreamSubscription? _linkSubscription;
 
   @override
   void initState() {
     super.initState();
+    _loadSavedUser();
     _initDeepLinks();
   }
 
@@ -127,6 +129,40 @@ class _AuthWrapperState extends State<AuthWrapper> {
   void dispose() {
     _linkSubscription?.cancel();
     super.dispose();
+  }
+
+  Future<void> _loadSavedUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userJson = prefs.getString('saved_user');
+    if (userJson != null) {
+      try {
+        setState(() {
+          _user = DiscordUser.fromJson(jsonDecode(userJson));
+          _isLoading = false;
+        });
+      } catch (_) {
+        setState(() => _isLoading = false);
+      }
+    } else {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _saveUser(DiscordUser user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('saved_user', jsonEncode({
+      'id': user.id,
+      'username': user.username,
+      'avatar': user.avatar,
+      'nickname': user.nickname,
+      'roles': user.roles,
+      'accessToken': user.accessToken,
+    }));
+  }
+
+  Future<void> _clearUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('saved_user');
   }
 
   void _initDeepLinks() {
@@ -143,11 +179,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
     setState(() => _isLoading = true);
     try {
       final response = await http.get(
-        Uri.parse('${Config.discordAuthEndpoint}?code=$code'), // ✅ Fixed space
+        Uri.parse('${Config.discordAuthEndpoint}?code=$code'),
       );
 
       if (response.statusCode == 200) {
         final user = DiscordUser.fromJson(jsonDecode(response.body));
+        await _saveUser(user);
         setState(() => _user = user);
       } else {
         _showError('Login failed. Please try again.');
@@ -167,12 +204,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Future<void> _loginWithDiscord() async {
     await launchUrl(
-      Uri.parse(Config.discordAuthUrl), // ✅ Uses config
+      Uri.parse(Config.discordAuthUrl),
       mode: LaunchMode.externalApplication,
     );
   }
 
-  void _logout() => setState(() => _user = null);
+  void _logout() async {
+    await _clearUser();
+    setState(() => _user = null);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -184,10 +224,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
             children: [
               CircularProgressIndicator(color: Color(0xFF6C63FF)),
               SizedBox(height: 16),
-              Text(
-                'Logging you in...',
-                style: TextStyle(color: Colors.white54),
-              ),
+              Text('Loading...', style: TextStyle(color: Colors.white54)),
             ],
           ),
         ),
