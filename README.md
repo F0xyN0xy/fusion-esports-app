@@ -14,7 +14,7 @@ Community app for Fusion Esports team members.
 
 ### Android
 1. Go to [Releases](../../releases)
-2. Download `app-release.apk`
+2. Download `vX.X.X.Beta.apk`
 3. Allow "Install from unknown sources" in settings
 4. Install APK
 
