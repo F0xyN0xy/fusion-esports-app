@@ -1316,29 +1316,28 @@ class StatsPage extends StatefulWidget {
 }
 
 class _StatsPageState extends State<StatsPage> {
-  late Future<Map<String, dynamic>> _xpData;
+  late Future<List<dynamic>> _leaderboard;
   bool _showLeaderboard = false;
 
   @override
   void initState() {
     super.initState();
-    _xpData = _fetchXPData();
+    _leaderboard = _fetchLeaderboard();
   }
 
-  Future<Map<String, dynamic>> _fetchXPData() async {
+  Future<List<dynamic>> _fetchLeaderboard() async {
     final response = await http.get(
-      Uri.parse('https://api.jsonbin.io/v3/b/${Config.xpBinId}/latest'),
-      headers: {'X-Master-Key': Config.jsonBinApiKey},
+      Uri.parse('${Config.baseUrl}/api/leaderboard'),
     );
     if (response.statusCode == 200) {
-      return jsonDecode(response.body)['record'];
+      return jsonDecode(response.body);
     }
-    throw Exception('Failed to load XP data');
+    throw Exception('Failed to load stats');
   }
 
   int _getLevel(int xp) => (0.1 * sqrt(xp.toDouble())).floor();
-  int _xpForLevel(int level) => pow(level / 0.1, 2).toInt();
   int _xpForNextLevel(int level) => pow((level + 1) / 0.1, 2).toInt();
+  int _xpForLevel(int level) => pow(level / 0.1, 2).toInt();
 
   @override
   Widget build(BuildContext context) {
@@ -1349,12 +1348,12 @@ class _StatsPageState extends State<StatsPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => setState(() => _xpData = _fetchXPData()),
+            onPressed: () => setState(() => _leaderboard = _fetchLeaderboard()),
           ),
         ],
       ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: _xpData,
+      body: FutureBuilder<List<dynamic>>(
+        future: _leaderboard,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -1368,13 +1367,11 @@ class _StatsPageState extends State<StatsPage> {
                 children: [
                   const Icon(Icons.error_outline, color: Colors.red, size: 48),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Failed to load stats',
-                    style: TextStyle(color: Colors.white54),
-                  ),
+                  const Text('Failed to load stats',
+                      style: TextStyle(color: Colors.white54)),
                   const SizedBox(height: 12),
                   ElevatedButton(
-                    onPressed: () => setState(() => _xpData = _fetchXPData()),
+                    onPressed: () => setState(() => _leaderboard = _fetchLeaderboard()),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -1382,16 +1379,12 @@ class _StatsPageState extends State<StatsPage> {
             );
           }
 
-          final data = snapshot.data!;
-          final myStats = data[widget.user.id];
-
-          // Sort leaderboard
-          final sorted = data.entries.toList()
-            ..sort(
-              (a, b) => (b.value['xp'] as int).compareTo(a.value['xp'] as int),
-            );
-
-          final myRank = sorted.indexWhere((e) => e.key == widget.user.id) + 1;
+          final leaderboard = snapshot.data!;
+          final myEntry = leaderboard.firstWhere(
+            (e) => e['userId'] == widget.user.id,
+            orElse: () => null,
+          );
+          final myRank = myEntry != null ? leaderboard.indexOf(myEntry) + 1 : 0;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -1399,8 +1392,8 @@ class _StatsPageState extends State<StatsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // My stats card
-                if (myStats != null) ...[
-                  _buildMyStatsCard(myStats, myRank),
+                if (myEntry != null) ...[
+                  _buildMyStatsCard(myEntry, myRank),
                   const SizedBox(height: 24),
                 ] else ...[
                   Container(
@@ -1422,8 +1415,7 @@ class _StatsPageState extends State<StatsPage> {
 
                 // Leaderboard toggle
                 GestureDetector(
-                  onTap: () =>
-                      setState(() => _showLeaderboard = !_showLeaderboard),
+                  onTap: () => setState(() => _showLeaderboard = !_showLeaderboard),
                   child: Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
@@ -1435,20 +1427,13 @@ class _StatsPageState extends State<StatsPage> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(
-                          Icons.leaderboard,
-                          color: Color(0xFF6C63FF),
-                          size: 22,
-                        ),
+                        const Icon(Icons.leaderboard, color: Color(0xFF6C63FF), size: 22),
                         const SizedBox(width: 12),
-                        const Text(
-                          'Leaderboard',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
+                        const Text('Leaderboard',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16)),
                         const Spacer(),
                         Icon(
                           _showLeaderboard
@@ -1463,13 +1448,14 @@ class _StatsPageState extends State<StatsPage> {
 
                 if (_showLeaderboard) ...[
                   const SizedBox(height: 8),
-                  ...sorted.take(10).toList().asMap().entries.map((entry) {
+                  ...leaderboard.take(10).toList().asMap().entries.map((entry) {
                     final rank = entry.key + 1;
-                    final userId = entry.value.key;
-                    final stats = entry.value.value;
-                    final xp = stats['xp'] as int;
+                    final item = entry.value;
+                    final xp = item['xp'] as int;
                     final level = _getLevel(xp);
-                    final isMe = userId == widget.user.id;
+                    final isMe = item['userId'] == widget.user.id;
+                    final username = item['username'] ?? 'Unknown';
+                    final avatar = item['avatar'];
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
@@ -1490,43 +1476,36 @@ class _StatsPageState extends State<StatsPage> {
                           SizedBox(
                             width: 32,
                             child: Text(
-                              rank == 1
-                                  ? '🥇'
-                                  : rank == 2
-                                      ? '🥈'
-                                      : rank == 3
-                                          ? '🥉'
-                                          : '#$rank',
-                              style: const TextStyle(
-                                color: Colors.white54,
-                                fontSize: 14,
-                              ),
+                              rank == 1 ? '🥇' : rank == 2 ? '🥈' : rank == 3 ? '🥉' : '#$rank',
+                              style: const TextStyle(color: Colors.white54, fontSize: 14),
                               textAlign: TextAlign.center,
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 8),
+                          CircleAvatar(
+                            radius: 16,
+                            backgroundImage: avatar != null ? NetworkImage(avatar) : null,
+                            backgroundColor: const Color(0xFF6C63FF),
+                            child: avatar == null
+                                ? Text(username[0].toUpperCase(),
+                                    style: const TextStyle(color: Colors.white, fontSize: 12))
+                                : null,
+                          ),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  isMe
-                                      ? widget.user.nickname
-                                      : 'User #${userId.substring(userId.length - 4)}',
+                                  username,
                                   style: TextStyle(
-                                    color: isMe
-                                        ? const Color(0xFF6C63FF)
-                                        : Colors.white,
+                                    color: isMe ? const Color(0xFF6C63FF) : Colors.white,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                Text(
-                                  'Level $level • $xp XP',
-                                  style: const TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 12,
-                                  ),
-                                ),
+                                Text('Level $level • $xp XP',
+                                    style: const TextStyle(
+                                        color: Colors.white54, fontSize: 12)),
                               ],
                             ),
                           ),
@@ -1543,7 +1522,7 @@ class _StatsPageState extends State<StatsPage> {
     );
   }
 
-  Widget _buildMyStatsCard(Map<String, dynamic> stats, int rank) {
+  Widget _buildMyStatsCard(dynamic stats, int rank) {
     final xp = stats['xp'] as int;
     final messages = stats['messages'] as int? ?? 0;
     final vcMinutes = stats['vcMinutes'] as int? ?? 0;
@@ -1574,13 +1553,8 @@ class _StatsPageState extends State<StatsPage> {
                     : null,
                 backgroundColor: Colors.white24,
                 child: widget.user.avatar == null
-                    ? Text(
-                        widget.user.username[0].toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                        ),
-                      )
+                    ? Text(widget.user.username[0].toUpperCase(),
+                        style: const TextStyle(color: Colors.white, fontSize: 22))
                     : null,
               ),
               const SizedBox(width: 12),
@@ -1588,56 +1562,36 @@ class _StatsPageState extends State<StatsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      widget.user.nickname,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Rank #$rank on the server',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                      ),
-                    ),
+                    Text(widget.user.nickname,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold)),
+                    Text('Rank #$rank on the server',
+                        style: const TextStyle(color: Colors.white70, fontSize: 13)),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.white24,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(
-                  'Level $level',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: Text('Level $level',
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          // XP Progress bar
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '$xp XP',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-              Text(
-                '$nextLevelXp XP for Level ${level + 1}',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
+              Text('$xp XP',
+                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              Text('$nextLevelXp XP for Level ${level + 1}',
+                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
             ],
           ),
           const SizedBox(height: 6),
@@ -1651,7 +1605,6 @@ class _StatsPageState extends State<StatsPage> {
             ),
           ),
           const SizedBox(height: 16),
-          // Stats row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -1670,18 +1623,11 @@ class _StatsPageState extends State<StatsPage> {
       children: [
         Icon(icon, color: Colors.white70, size: 20),
         const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(color: Colors.white70, fontSize: 11),
-        ),
+        Text(value,
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+        Text(label,
+            style: const TextStyle(color: Colors.white70, fontSize: 11)),
       ],
     );
   }
