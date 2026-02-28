@@ -132,21 +132,39 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _loadSavedUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userJson = prefs.getString('saved_user');
-    if (userJson != null) {
-      try {
-        setState(() {
-          _user = DiscordUser.fromJson(jsonDecode(userJson));
-          _isLoading = false;
-        });
-      } catch (_) {
-        setState(() => _isLoading = false);
-      }
-    } else {
+  final prefs = await SharedPreferences.getInstance();
+  final userJson = prefs.getString('saved_user');
+  if (userJson != null) {
+    try {
+      final savedUser = DiscordUser.fromJson(jsonDecode(userJson));
+      setState(() {
+        _user = savedUser;
+        _isLoading = false;
+      });
+      // Refresh profile in background
+      _refreshUserProfile(savedUser.accessToken);
+    } catch (_) {
       setState(() => _isLoading = false);
     }
+  } else {
+    setState(() => _isLoading = false);
   }
+}
+
+Future<void> _refreshUserProfile(String accessToken) async {
+  try {
+    final response = await http.get(
+      Uri.parse('${Config.discordAuthEndpoint}?refresh=true&token=$accessToken'),
+    );
+    if (response.statusCode == 200) {
+      final updatedUser = DiscordUser.fromJson(jsonDecode(response.body));
+      await _saveUser(updatedUser);
+      setState(() => _user = updatedUser);
+    }
+  } catch (_) {
+    // Silently fail — user stays logged in with cached data
+  }
+}
 
   Future<void> _saveUser(DiscordUser user) async {
     final prefs = await SharedPreferences.getInstance();
