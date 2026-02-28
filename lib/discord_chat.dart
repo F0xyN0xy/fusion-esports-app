@@ -266,7 +266,7 @@ class _DiscordChatPageState extends State<DiscordChatPage> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-            color: const Color(0xFF5865F2).withValues(alpha: 0.15),
+            color: const Color(0xFF5865F2).withOpacity(0.15),
             child: const Row(
               children: [
                 Icon(Icons.smart_toy, color: Color(0xFF5865F2), size: 16),
@@ -325,7 +325,7 @@ class _DiscordChatPageState extends State<DiscordChatPage> {
             decoration: BoxDecoration(
               color: const Color(0xFF12121A),
               border: Border(
-                top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                top: BorderSide(color: Colors.white.withOpacity(0.1)),
               ),
             ),
             child: SafeArea(
@@ -503,7 +503,7 @@ class LockedChatPage extends StatelessWidget {
             Icon(
               Icons.lock_outline,
               size: 64,
-              color: Colors.orange.withValues(alpha: 0.5),
+              color: Colors.orange.withOpacity(0.5),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -528,7 +528,7 @@ class LockedChatPage extends StatelessWidget {
               onPressed: () {
                 launchUrl(Uri.parse(Config.discordInviteUrl));
               },
-              icon: const Icon(Icons.discord),
+              icon: const Icon(Icons.login),
               label: const Text('Apply for Beta Access'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF5865F2),

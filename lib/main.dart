@@ -24,7 +24,7 @@ void main() async {
   runApp(const FusionApp());
 }
 
-// ── USER MODEL ─────────────────────────────────────────────────────────────
+// ── USER MODEL ──────────────────────────────────────────────���──────────────
 class DiscordUser {
   final String id;
   final String username;
@@ -132,39 +132,39 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _loadSavedUser() async {
-  final prefs = await SharedPreferences.getInstance();
-  final userJson = prefs.getString('saved_user');
-  if (userJson != null) {
-    try {
-      final savedUser = DiscordUser.fromJson(jsonDecode(userJson));
-      setState(() {
-        _user = savedUser;
-        _isLoading = false;
-      });
-      // Refresh profile in background
-      _refreshUserProfile(savedUser.accessToken);
-    } catch (_) {
+    final prefs = await SharedPreferences.getInstance();
+    final userJson = prefs.getString('saved_user');
+    if (userJson != null) {
+      try {
+        final savedUser = DiscordUser.fromJson(jsonDecode(userJson));
+        setState(() {
+          _user = savedUser;
+          _isLoading = false;
+        });
+        // Refresh profile in background
+        _refreshUserProfile(savedUser.accessToken);
+      } catch (_) {
+        setState(() => _isLoading = false);
+      }
+    } else {
       setState(() => _isLoading = false);
     }
-  } else {
-    setState(() => _isLoading = false);
   }
-}
 
-Future<void> _refreshUserProfile(String accessToken) async {
-  try {
-    final response = await http.get(
-      Uri.parse('${Config.discordAuthEndpoint}?refresh=true&token=$accessToken'),
-    );
-    if (response.statusCode == 200) {
-      final updatedUser = DiscordUser.fromJson(jsonDecode(response.body));
-      await _saveUser(updatedUser);
-      setState(() => _user = updatedUser);
+  Future<void> _refreshUserProfile(String accessToken) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${Config.discordAuthEndpoint}?refresh=true&token=$accessToken'),
+      );
+      if (response.statusCode == 200) {
+        final updatedUser = DiscordUser.fromJson(jsonDecode(response.body));
+        await _saveUser(updatedUser);
+        setState(() => _user = updatedUser);
+      }
+    } catch (_) {
+      // Silently fail — user stays logged in with cached data
     }
-  } catch (_) {
-    // Silently fail — user stays logged in with cached data
   }
-}
 
   Future<void> _saveUser(DiscordUser user) async {
     final prefs = await SharedPreferences.getInstance();
@@ -259,7 +259,7 @@ Future<void> _refreshUserProfile(String accessToken) async {
   }
 }
 
-// ── LOGIN PAGE ─────────────────────────────────────────────────────────────
+// ── LOGIN PAGE ───────────��─────────────────────────────────────────────────
 class LoginPage extends StatefulWidget {
   final VoidCallback onLogin;
 
@@ -298,7 +298,7 @@ class _LoginPageState extends State<LoginPage> {
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF6C63FF).withValues(alpha: 0.4),
+                        color: const Color(0xFF6C63FF).withOpacity(0.4),
                         blurRadius: 30,
                         spreadRadius: 5,
                       ),
@@ -399,7 +399,7 @@ class _LoginPageState extends State<LoginPage> {
                   height: 56,
                   child: ElevatedButton.icon(
                     onPressed: _accepted ? widget.onLogin : null,
-                    icon: const Icon(Icons.discord, size: 24),
+                    icon: const Icon(Icons.login, size: 24),
                     label: const Text(
                       'Login with Discord',
                       style: TextStyle(
@@ -412,7 +412,7 @@ class _LoginPageState extends State<LoginPage> {
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: const Color(
                         0xFF5865F2,
-                      ).withValues(alpha: 0.3),
+                      ).withOpacity(0.3),
                       disabledForegroundColor: Colors.white38,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
@@ -770,7 +770,7 @@ class _HomePageState extends State<HomePage> {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              const Color(0xFFFFD700).withValues(alpha: 0.15),
+                              const Color(0xFFFFD700).withOpacity(0.15),
                               const Color(0xFF12121A),
                             ],
                             begin: Alignment.centerLeft,
@@ -780,7 +780,7 @@ class _HomePageState extends State<HomePage> {
                           border: Border.all(
                             color: const Color(
                               0xFFFFD700,
-                            ).withValues(alpha: 0.4),
+                            ).withOpacity(0.4),
                           ),
                         ),
                         child: Row(
@@ -790,7 +790,7 @@ class _HomePageState extends State<HomePage> {
                               decoration: BoxDecoration(
                                 color: const Color(
                                   0xFFFFD700,
-                                ).withValues(alpha: 0.15),
+                                ).withOpacity(0.15),
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -884,7 +884,7 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF12121A),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
+        border: Border.all(color: color.withOpacity(0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -892,7 +892,7 @@ class _StatCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
+              color: color.withOpacity(0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 22),
@@ -970,14 +970,14 @@ class _SocialCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF12121A),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.25)),
+          border: Border.all(color: color.withOpacity(0.25)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
+                color: color.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(_getIcon(platform), color: color, size: 22),
@@ -1003,7 +1003,7 @@ class _SocialCard extends StatelessWidget {
             ),
             Icon(
               Icons.arrow_forward_ios_rounded,
-              color: color.withValues(alpha: 0.5),
+              color: color.withOpacity(0.5),
               size: 14,
             ),
           ],
@@ -1024,6 +1024,7 @@ class SchedulePage extends StatefulWidget {
 class _SchedulePageState extends State<SchedulePage> {
   late Future<Map<String, dynamic>> _data;
   late Timer _timer;
+  String _selectedTab = 'tournament';
 
   @override
   void initState() {
@@ -1040,44 +1041,32 @@ class _SchedulePageState extends State<SchedulePage> {
 
   String _getCountdown(Map<String, dynamic> tournament) {
     final now = DateTime.now();
-    final dayOfWeek = tournament['dayOfWeek'];
-    final hour = tournament['hour'];
-    final minute = tournament['minute'];
-
     var next = DateTime.utc(
-      now.year,
-      now.month,
-      now.day,
-      hour,
-      minute,
+      now.year, now.month, now.day,
+      tournament['hour'], tournament['minute'],
     ).toLocal();
-    while (next.weekday != dayOfWeek) {
+    while (next.weekday != tournament['dayOfWeek']) {
       next = next.add(const Duration(days: 1));
     }
     if (!next.isAfter(now)) next = next.add(const Duration(days: 7));
-
     final diff = next.difference(now);
-    final days = diff.inDays;
-    final hours = diff.inHours % 24;
-    final minutes = diff.inMinutes % 60;
-    final seconds = diff.inSeconds % 60;
-
-    if (days > 0) return '${days}d ${hours}h ${minutes}m ${seconds}s';
-    if (hours > 0) return '${hours}h ${minutes}m ${seconds}s';
-    return '${minutes}m ${seconds}s';
+    if (diff.inDays > 0) return '${diff.inDays}d ${diff.inHours % 24}h ${diff.inMinutes % 60}m ${diff.inSeconds % 60}s';
+    if (diff.inHours > 0) return '${diff.inHours}h ${diff.inMinutes % 60}m ${diff.inSeconds % 60}s';
+    return '${diff.inMinutes}m ${diff.inSeconds % 60}s';
   }
 
   String _getWeekdayName(int day) {
-    const days = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     return days[day - 1];
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'open': return const Color(0xFF4CAF50);
+      case 'full': return const Color(0xFFFF6B6B);
+      case 'cancelled': return Colors.white38;
+      default: return const Color(0xFF6C63FF);
+    }
   }
 
   @override
@@ -1086,152 +1075,430 @@ class _SchedulePageState extends State<SchedulePage> {
       appBar: AppBar(
         title: const Text('Schedule'),
         backgroundColor: const Color(0xFF12121A),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => setState(() => _data = fetchBinData()),
+          ),
+        ],
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _data,
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF)));
           }
 
           final tournament = snapshot.data!['tournament'];
           final lastWinner = snapshot.data!['lastWinner'];
+          final scrims = List<Map<String, dynamic>>.from(snapshot.data!['scrims'] ?? []);
+          final coaching = List<Map<String, dynamic>>.from(snapshot.data!['coaching'] ?? []);
           final weekday = _getWeekdayName(tournament['dayOfWeek']);
           final hour = tournament['hour'];
           final minute = tournament['minute'].toString().padLeft(2, '0');
-          final upcomingCount = tournament['upcomingCount'];
-          final countdown = _getCountdown(tournament);
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+          // Filter upcoming scrims
+          final now = DateTime.now();
+          final upcomingScrims = scrims.where((s) {
+            try {
+              final dateStr = '${s['date']} ${s['time']}';
+              final parsed = DateTime.tryParse(dateStr.replaceAll('/', '-'));
+              return parsed != null && parsed.isAfter(now) && s['status'] != 'cancelled';
+            } catch (_) { return true; }
+          }).toList();
+
+          return Column(
+            children: [
+              // ── TAB BAR ──
+              Container(
+                color: const Color(0xFF12121A),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Row(
+                  children: [
+                    _TabButton(label: 'Tournament', icon: Icons.emoji_events, selected: _selectedTab == 'tournament', onTap: () => setState(() => _selectedTab = 'tournament')),
+                    const SizedBox(width: 8),
+                    _TabButton(label: 'Scrims', icon: Icons.sports_esports, selected: _selectedTab == 'scrims', onTap: () => setState(() => _selectedTab = 'scrims'), badge: upcomingScrims.length),
+                    const SizedBox(width: 8),
+                    _TabButton(label: 'Coaching', icon: Icons.school, selected: _selectedTab == 'coaching', onTap: () => setState(() => _selectedTab = 'coaching')),
+                  ],
+                ),
+              ),
+
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: _selectedTab == 'tournament'
+                      ? _buildTournamentTab(tournament, lastWinner, weekday, hour, minute)
+                      : _selectedTab == 'scrims'
+                          ? _buildScrimsTab(upcomingScrims, scrims)
+                          : _buildCoachingTab(coaching),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTournamentTab(dynamic tournament, dynamic lastWinner, String weekday, int hour, String minute) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Countdown card
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF6C63FF), Color(0xFF3D35CC)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            children: [
+              const Text('Next Tournament', style: TextStyle(color: Colors.white70, fontSize: 14)),
+              const SizedBox(height: 8),
+              Text(tournament['name'], style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              Text(_getCountdown(tournament), style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w600, letterSpacing: 1.2)),
+              const SizedBox(height: 8),
+              Text('Every $weekday at $hour:$minute UTC', style: const TextStyle(color: Colors.white60, fontSize: 13)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        _ScheduleInfoRow(icon: Icons.event, label: 'Upcoming Tournaments', value: tournament['upcomingCount'].toString(), color: const Color(0xFF6C63FF)),
+        const SizedBox(height: 12),
+        _ScheduleInfoRow(icon: Icons.repeat, label: 'Frequency', value: 'Weekly every $weekday', color: const Color(0xFFFF6B6B)),
+        const SizedBox(height: 12),
+        _ScheduleInfoRow(icon: Icons.access_time, label: 'Start Time', value: '$hour:$minute UTC (${hour + 1}:$minute CET)', color: const Color(0xFF4CAF50)),
+        const SizedBox(height: 24),
+        const Text('Last Tournament Results', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        if (lastWinner != null) ...[
+          _WinnerCard(place: '🥇 1st', name: lastWinner['first'] ?? 'TBD', color: const Color(0xFFFFD700)),
+          const SizedBox(height: 8),
+          _WinnerCard(place: '🥈 2nd', name: lastWinner['second'] ?? 'TBD', color: const Color(0xFFB0BEC5)),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF12121A),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white12),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF6C63FF), Color(0xFF3D35CC)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    children: [
-                      const Text(
-                        'Next Tournament',
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        tournament['name'],
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        countdown,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Every $weekday at $hour:$minute UTC',
-                        style: const TextStyle(
-                          color: Colors.white60,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _ScheduleInfoRow(
-                  icon: Icons.event,
-                  label: 'Upcoming Tournaments',
-                  value: upcomingCount.toString(),
-                  color: const Color(0xFF6C63FF),
-                ),
-                const SizedBox(height: 12),
-                _ScheduleInfoRow(
-                  icon: Icons.repeat,
-                  label: 'Frequency',
-                  value: 'Weekly every $weekday',
-                  color: const Color(0xFFFF6B6B),
-                ),
-                const SizedBox(height: 12),
-                _ScheduleInfoRow(
-                  icon: Icons.access_time,
-                  label: 'Start Time',
-                  value: '$hour:$minute UTC (${hour + 1}:$minute CET)',
-                  color: const Color(0xFF4CAF50),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Last Tournament Results',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (lastWinner != null) ...[
-                  _WinnerCard(
-                    place: '🥇 1st',
-                    name: lastWinner['first'] ?? 'TBD',
-                    color: const Color(0xFFFFD700),
-                  ),
-                  const SizedBox(height: 8),
-                  _WinnerCard(
-                    place: '🥈 2nd',
-                    name: lastWinner['second'] ?? 'TBD',
-                    color: const Color(0xFFB0BEC5),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF12121A),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          lastWinner['note'] ?? '',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          lastWinner['date'] ?? '',
-                          style: const TextStyle(
-                            color: Colors.white38,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                Text(lastWinner['note'] ?? '', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                const SizedBox(height: 4),
+                Text(lastWinner['date'] ?? '', style: const TextStyle(color: Colors.white38, fontSize: 12)),
               ],
             ),
-          );
-        },
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildScrimsTab(List<Map<String, dynamic>> upcoming, List<Map<String, dynamic>> all) {
+    if (all.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 60),
+            const Icon(Icons.sports_esports, color: Colors.white24, size: 64),
+            const SizedBox(height: 16),
+            const Text('No scrims scheduled', style: TextStyle(color: Colors.white54, fontSize: 16)),
+            const SizedBox(height: 8),
+            const Text('Check back later or ask a mod to add one!', style: TextStyle(color: Colors.white38, fontSize: 13)),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (upcoming.isNotEmpty) ...[
+          const Text('Upcoming Scrims', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          ...upcoming.map((s) => _ScrimCard(scrim: s, statusColor: _getStatusColor(s['status'] ?? 'open'))),
+        ],
+        if (upcoming.length < all.length) ...[
+          const SizedBox(height: 24),
+          const Text('Past Scrims', style: TextStyle(color: Colors.white54, fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          ...all.where((s) => !upcoming.contains(s)).take(5).map((s) =>
+            _ScrimCard(scrim: s, statusColor: Colors.white24, isPast: true)),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCoachingTab(List<Map<String, dynamic>> coaching) {
+    if (coaching.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 60),
+            const Icon(Icons.school, color: Colors.white24, size: 64),
+            const SizedBox(height: 16),
+            const Text('No coaching sessions scheduled',
+                style: TextStyle(color: Colors.white54, fontSize: 16)),
+            const SizedBox(height: 8),
+            const Text('Check back later!',
+                style: TextStyle(color: Colors.white38, fontSize: 13)),
+          ],
+        ),
+      );
+    }
+
+    final now = DateTime.now();
+    final upcoming = coaching.where((c) {
+      try {
+        final parsed = DateTime.tryParse('${c['date']} ${c['time']}'.replaceAll('/', '-'));
+        return parsed != null && parsed.isAfter(now);
+      } catch (_) { return true; }
+    }).toList();
+
+    final past = coaching.where((c) => !upcoming.contains(c)).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (upcoming.isNotEmpty) ...[
+          const Text('Upcoming Sessions',
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          ...upcoming.map((c) => _CoachingCard(session: c)),
+        ],
+        if (past.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          const Text('Past Sessions',
+              style: TextStyle(color: Colors.white54, fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          ...past.take(5).map((c) => _CoachingCard(session: c, isPast: true)),
+        ],
+      ],
+    );
+  }
+}
+
+class _CoachingCard extends StatelessWidget {
+  final Map<String, dynamic> session;
+  final bool isPast;
+
+  const _CoachingCard({required this.session, this.isPast = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isPast ? Colors.white24 : const Color(0xFF6C63FF);
+    final spots = session['spots'];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF12121A),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withOpacity(isPast ? 0.15 : 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.school_rounded, color: color, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      session['topic'] ?? 'Coaching Session',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15),
+                    ),
+                    Text(
+                      'by ${session['coach'] ?? 'TBD'}',
+                      style: TextStyle(color: color, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(session['date'] ?? '',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  Text(session['time'] ?? '',
+                      style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _ScrimChip(icon: Icons.military_tech, label: session['rank'] ?? 'All ranks'),
+              const SizedBox(width: 8),
+              if (spots != null)
+                _ScrimChip(icon: Icons.people, label: '$spots spots'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TabButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+  final int badge;
+
+  const _TabButton({required this.label, required this.icon, required this.selected, required this.onTap, this.badge = 0});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF6C63FF) : const Color(0xFF1E1E2A),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: selected ? Colors.white : Colors.white54),
+              const SizedBox(width: 6),
+              Text(label, style: TextStyle(color: selected ? Colors.white : Colors.white54, fontSize: 13, fontWeight: FontWeight.bold)),
+              if (badge > 0) ...[
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: const Color(0xFFFF6B6B), borderRadius: BorderRadius.circular(10)),
+                  child: Text('$badge', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScrimCard extends StatelessWidget {
+  final Map<String, dynamic> scrim;
+  final Color statusColor;
+  final bool isPast;
+
+  const _ScrimCard({required this.scrim, required this.statusColor, this.isPast = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final status = scrim['status'] ?? 'open';
+    final spots = scrim['spots'];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF12121A),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: isPast ? Colors.white12 : statusColor.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.sports_esports, color: statusColor, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(scrim['format'] ?? 'Scrim', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                    Text('${scrim['date']} at ${scrim['time']}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(status[0].toUpperCase() + status.substring(1),
+                    style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _ScrimChip(icon: Icons.military_tech, label: scrim['rank'] ?? 'All ranks'),
+              const SizedBox(width: 8),
+              if (spots != null) _ScrimChip(icon: Icons.people, label: '$spots spots'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScrimChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _ScrimChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: Colors.white54),
+          const SizedBox(width: 4),
+          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        ],
       ),
     );
   }
@@ -1440,7 +1707,7 @@ class _StatsPageState extends State<StatsPage> {
                       color: const Color(0xFF12121A),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: const Color(0xFF6C63FF).withValues(alpha: 0.3),
+                        color: const Color(0xFF6C63FF).withOpacity(0.3),
                       ),
                     ),
                     child: Row(
@@ -1480,12 +1747,12 @@ class _StatsPageState extends State<StatsPage> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: isMe
-                            ? const Color(0xFF6C63FF).withValues(alpha: 0.15)
+                            ? const Color(0xFF6C63FF).withOpacity(0.15)
                             : const Color(0xFF12121A),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isMe
-                              ? const Color(0xFF6C63FF).withValues(alpha: 0.5)
+                              ? const Color(0xFF6C63FF).withOpacity(0.5)
                               : Colors.white12,
                         ),
                       ),
@@ -1759,7 +2026,7 @@ class _NewsPageState extends State<NewsPage> {
                   color: const Color(0xFF12121A),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFF6C63FF).withValues(alpha: 0.2),
+                    color: const Color(0xFF6C63FF).withOpacity(0.2),
                   ),
                 ),
                 child: Column(
@@ -1970,448 +2237,283 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
-    _userRoles = Set<String>.from(widget.user.roles);
+    _loadUserRoles();
   }
 
-  Future<void> _toggleRole(String roleId, bool add) async {
+  Future<void> _loadUserRoles() async {
+    setState(() => _rolesLoading = true);
+    try {
+      // In a real app, load roles from backend using widget.user.id
+      setState(() => _userRoles = Set<String>.from(widget.user.roles));
+    } catch (_) {
+      // keep defaults
+    } finally {
+      setState(() => _rolesLoading = false);
+    }
+  }
+
+  Future<void> _toggleRole(String roleId, bool enabled) async {
     setState(() => _rolesLoading = true);
     try {
       final response = await http.post(
-        Uri.parse('https://fusion-esports.netlify.app/api/manage_roles'),
+        Uri.parse(Config.manageRolesEndpoint),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'userId': widget.user.id,
           'roleId': roleId,
-          'action': add ? 'add' : 'remove',
+          'action': enabled ? 'add' : 'remove',
+          'accessToken': widget.user.accessToken,
         }),
       );
 
       if (response.statusCode == 200) {
         setState(() {
-          if (add) {
+          if (enabled) {
             _userRoles.add(roleId);
           } else {
             _userRoles.remove(roleId);
           }
         });
       } else {
-        _showError('Failed to update role. Please try again.');
+        throw Exception('Failed to update role');
       }
     } catch (e) {
-      _showError('Something went wrong.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     } finally {
       setState(() => _rolesLoading = false);
     }
   }
 
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
-  }
-
-  Widget _buildRoleCategory(
-    String category,
-    List<MapEntry<String, Map<String, dynamic>>> roles,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Text(
-            category,
-            style: const TextStyle(
-              color: Colors.white54,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1,
-            ),
-          ),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF12121A),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.all(12),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: roles.map((entry) {
-              final roleId = entry.key;
-              final role = entry.value;
-              final isSelected = _userRoles.contains(roleId);
-              final color = role['color'] as Color;
-
-              return GestureDetector(
-                onTap: _rolesLoading
-                    ? null
-                    : () => _toggleRole(roleId, !isSelected),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? color.withValues(alpha: 0.2)
-                        : const Color(0xFF1A1A2E),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isSelected ? color : Colors.white12,
-                      width: isSelected ? 1.5 : 1,
-                    ),
-                  ),
-                  child: Text(
-                    role['name'] as String,
-                    style: TextStyle(
-                      color: isSelected ? color : Colors.white54,
-                      fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.normal,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Group roles by category
-    final categories = <String, List<MapEntry<String, Map<String, dynamic>>>>{};
-    for (final entry in _availableRoles.entries) {
-      final category = entry.value['category'] as String;
-      categories.putIfAbsent(category, () => []).add(entry);
-    }
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
         backgroundColor: const Color(0xFF12121A),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            onPressed: () => FeedbackSystem.showBugReportDialog(context, user: widget.user, currentScreen: 'Settings'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.feedback_outlined),
+            onPressed: () => FeedbackSystem.showFeedbackDialog(context, user: widget.user),
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Profile card
-            Container(
+      body: _rolesLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF)))
+          : ListView(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF12121A),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color(0xFF6C63FF).withOpacity(0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundImage: widget.user.avatar != null
-                        ? NetworkImage(widget.user.avatar!)
-                        : null,
-                    backgroundColor: const Color(0xFF6C63FF),
-                    child: widget.user.avatar == null
-                        ? Text(
-                            widget.user.username[0].toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                            ),
-                          )
-                        : null,
+              children: [
+                // Account section
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF12121A),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white12),
                   ),
-                  const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Text(
-                        widget.user.nickname,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundImage: widget.user.avatar != null
+                            ? NetworkImage(widget.user.avatar!)
+                            : null,
+                        backgroundColor: const Color(0xFF6C63FF),
+                        child: widget.user.avatar == null
+                            ? Text(widget.user.username[0].toUpperCase(),
+                                style: const TextStyle(color: Colors.white))
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(widget.user.nickname,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold)),
+                            Text('@${widget.user.username}',
+                                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                          ],
                         ),
                       ),
-                      Text(
-                        '@${widget.user.username}',
-                        style: const TextStyle(color: Colors.white54),
+                      TextButton.icon(
+                        onPressed: widget.onLogout,
+                        icon: const Icon(Icons.logout),
+                        label: const Text('Logout'),
+                        style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
+                ),
 
-            const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
-            // App settings
-            const Text(
-              'APP',
-              style: TextStyle(
-                color: Colors.white54,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF12121A),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    title: const Text(
-                      'Push Notifications',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    subtitle: const Text(
-                      'Receive app notifications',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
-                    ),
-                    value: _notificationsEnabled,
-                    activeThumbColor: const Color(0xFF6C63FF),
-                    onChanged: (val) =>
-                        setState(() => _notificationsEnabled = val),
+                // Appearance
+                _SectionHeader('Appearance'),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF12121A),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white12),
                   ),
-                  const Divider(color: Colors.white12, height: 1),
-                  SwitchListTile(
-                    title: const Text(
-                      'Dark Mode',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    subtitle: const Text(
-                      'Toggle dark/light theme',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
-                    ),
-                    value: _isDarkMode,
-                    activeThumbColor: const Color(0xFF6C63FF),
-                    onChanged: (val) {
-                      setState(() => _isDarkMode = val);
-                      FusionApp.of(
-                        context,
-                      )?.setThemeMode(val ? ThemeMode.dark : ThemeMode.light);
-                    },
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Roles section
-            Row(
-              children: [
-                const Text(
-                  'YOUR ROLES',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.dark_mode, color: Colors.white70),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text('Dark Mode', style: TextStyle(color: Colors.white)),
+                      ),
+                      Switch(
+                        value: _isDarkMode,
+                        onChanged: (v) {
+                          setState(() => _isDarkMode = v);
+                          FusionApp.of(context)?.setThemeMode(v ? ThemeMode.dark : ThemeMode.light);
+                        },
+                      )
+                    ],
                   ),
                 ),
-                if (_rolesLoading) ...[
-                  const SizedBox(width: 8),
-                  const SizedBox(
-                    width: 12,
-                    height: 12,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Color(0xFF6C63FF),
-                    ),
+
+                const SizedBox(height: 16),
+
+                // Notifications
+                _SectionHeader('Notifications'),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF12121A),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white12),
                   ),
-                ],
+                  child: Row(
+                    children: [
+                      const Icon(Icons.notifications_active, color: Colors.white70),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text('Enable Notifications', style: TextStyle(color: Colors.white)),
+                      ),
+                      Switch(
+                        value: _notificationsEnabled,
+                        onChanged: (v) => setState(() => _notificationsEnabled = v),
+                      )
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Roles
+                _SectionHeader('Roles'),
+                _buildRolesSection(),
+
+                const SizedBox(height: 24),
+
+                // About
+                _SectionHeader('About'),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF12121A),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${Config.appName} • ${Config.appBuild}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text('Version ${Config.appVersion}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                      const SizedBox(height: 8),
+                      Text(Config.copyright, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                    ],
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 8),
-            ...categories.entries.map(
-              (e) => _buildRoleCategory(e.key, e.value),
+    );
+  }
+
+  Widget _buildRolesSection() {
+    // Group roles by category for display
+    final rolesByCategory = <String, List<MapEntry<String, Map<String, dynamic>>>>{};
+    for (final entry in _availableRoles.entries) {
+      final category = entry.value['category'] as String;
+      rolesByCategory.putIfAbsent(category, () => []).add(entry);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: rolesByCategory.entries.map((cat) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8, top: 8),
+              child: Text(cat.key,
+                  style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
             ),
+            ...cat.value.map((entry) {
+              final roleId = entry.key;
+              final role = entry.value;
+              final color = role['color'] as Color;
+              final enabled = _userRoles.contains(roleId);
 
-            const SizedBox(height: 8),
-
-            // About section
-            const Text(
-              'ABOUT',
-              style: TextStyle(
-                color: Colors.white54,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF12121A),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Column(
-                children: [
-                  ListTile(
-                    title: Text(
-                      'Version',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    trailing: Text(
-                      '2.6.7 Beta',
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                  ),
-                  Divider(color: Colors.white12, height: 1),
-                  ListTile(
-                    title: Text(
-                      'Fusion Esports',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    trailing: Text(
-                      '© 2026',
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Feedback & Bug Report section
-            const Text(
-              'FEEDBACK',
-              style: TextStyle(
-                color: Colors.white54,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF12121A),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: const Icon(
-                      Icons.feedback,
-                      color: Color(0xFF6C63FF),
-                    ),
-                    title: const Text(
-                      'Send Feedback',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    subtitle: const Text(
-                      'Suggest features or improvements',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
-                    ),
-                    trailing: const Icon(
-                      Icons.arrow_forward_ios,
-                      color: Colors.white54,
-                      size: 16,
-                    ),
-                    onTap: () => FeedbackSystem.showFeedbackDialog(
-                      context,
-                      user: widget.user,
-                    ),
-                  ),
-                  const Divider(color: Colors.white12, height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.bug_report, color: Colors.orange),
-                    title: const Text(
-                      'Report a Bug',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    subtitle: const Text(
-                      'Something not working right?',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
-                    ),
-                    trailing: const Icon(
-                      Icons.arrow_forward_ios,
-                      color: Colors.white54,
-                      size: 16,
-                    ),
-                    onTap: () => FeedbackSystem.showBugReportDialog(
-                      context,
-                      user: widget.user,
-                      currentScreen: 'Settings',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Logout button
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      backgroundColor: const Color(0xFF12121A),
-                      title: const Text(
-                        'Logout',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      content: const Text(
-                        'Are you sure you want to logout?',
-                        style: TextStyle(color: Colors.white54),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            widget.onLogout();
-                          },
-                          child: const Text(
-                            'Logout',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.logout, color: Colors.white),
-                label: const Text(
-                  'Logout',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF12121A),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: color.withOpacity(0.3)),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.withOpacity(0.2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.red.withValues(alpha: 0.5)),
-                  ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(color: color.withOpacity(0.8), shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(role['name'] as String,
+                          style: const TextStyle(color: Colors.white)),
+                    ),
+                    Switch(
+                      value: enabled,
+                      onChanged: (v) => _toggleRole(roleId, v),
+                      activeColor: color,
+                    )
+                  ],
                 ),
-              ),
-            ),
-            const SizedBox(height: 32),
+              );
+            })
           ],
-        ),
-      ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  const _SectionHeader(this.title);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
     );
   }
 }

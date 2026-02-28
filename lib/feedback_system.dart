@@ -163,7 +163,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                           horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFF6C63FF).withValues(alpha: 0.2)
+                            ? const Color(0xFF6C63FF).withOpacity(0.2)
                             : const Color(0xFF1A1A2E),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
@@ -263,7 +263,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   disabledBackgroundColor:
-                      const Color(0xFF6C63FF).withValues(alpha: 0.3),
+                      const Color(0xFF6C63FF).withOpacity(0.3),
                 ),
                 child: _isSubmitting
                     ? const SizedBox(
@@ -471,7 +471,7 @@ class _BugReportSheetState extends State<_BugReportSheet> {
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? (level['color'] as Color).withValues(alpha: 0.2)
+                              ? (level['color'] as Color).withOpacity(0.2)
                               : const Color(0xFF1A1A2E),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
@@ -558,12 +558,12 @@ class _BugReportSheetState extends State<_BugReportSheet> {
                         fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.withValues(alpha: 0.8),
+                    backgroundColor: Colors.red.withOpacity(0.8),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    disabledBackgroundColor: Colors.red.withValues(alpha: 0.3),
+                    disabledBackgroundColor: Colors.red.withOpacity(0.3),
                   ),
                 ),
               ),
