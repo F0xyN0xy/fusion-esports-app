@@ -123,6 +123,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     super.initState();
     _loadSavedUser();
     _initDeepLinks();
+    _setupNotifications(); // add this
   }
 
   @override
@@ -154,7 +155,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
   Future<void> _refreshUserProfile(String accessToken) async {
     try {
       final response = await http.get(
-        Uri.parse('${Config.discordAuthEndpoint}?refresh=true&token=$accessToken'),
+        Uri.parse(
+            '${Config.discordAuthEndpoint}?refresh=true&token=$accessToken'),
       );
       if (response.statusCode == 200) {
         final updatedUser = DiscordUser.fromJson(jsonDecode(response.body));
@@ -214,6 +216,51 @@ class _AuthWrapperState extends State<AuthWrapper> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+  Future<void> _setupNotifications() async {
+  final messaging = FirebaseMessaging.instance;
+
+  await messaging.requestPermission();
+
+  await messaging.subscribeToTopic('all');
+  await messaging.subscribeToTopic('tournaments');
+  await messaging.subscribeToTopic('scrims');
+  await messaging.subscribeToTopic('coaching');
+
+  FirebaseMessaging.onMessage.listen((message) {
+    if (message.notification != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.notifications, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      message.notification!.title ?? '',
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      message.notification!.body ?? '',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF6C63FF),
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  });
   }
 
   void _showError(String message) {
@@ -541,9 +588,187 @@ Future<Map<String, dynamic>> fetchBinData() async {
     headers: {'X-Master-Key': Config.jsonBinApiKey},
   );
   if (response.statusCode == 200) {
-    return jsonDecode(response.body)['record'];
+    final decoded = jsonDecode(response.body);
+    final raw = (decoded is Map && decoded.containsKey('record'))
+        ? decoded['record']
+        : decoded;
+    if (raw is Map<String, dynamic>) {
+      return _normalizeBinData(raw);
+    }
+    // If unexpected shape, still try to wrap into defaults
+    return _normalizeBinData({});
   }
   throw Exception('Failed to load data');
+}
+
+Map<String, dynamic> _normalizeBinData(Map<String, dynamic> raw) {
+  // Helper getters
+  int toInt(dynamic v, [int fallback = 0]) {
+    if (v is int) return v;
+    if (v is double) return v.floor();
+    if (v is String) {
+      final p = int.tryParse(v.trim());
+      if (p != null) return p;
+    }
+    return fallback;
+  }
+
+  String toStr(dynamic v, [String fallback = '']) {
+    if (v == null) return fallback;
+    return v.toString();
+  }
+
+  List<Map<String, dynamic>> toListOfMap(dynamic v) {
+    if (v is List) {
+      return v
+          .map((e) => e is Map<String, dynamic>
+              ? e
+              : e is Map
+                  ? Map<String, dynamic>.from(e)
+                  : <String, dynamic>{})
+          .toList();
+    }
+    return <Map<String, dynamic>>[];
+  }
+
+  Map<String, dynamic> getMap(dynamic v) {
+    if (v is Map<String, dynamic>) return v;
+    if (v is Map) return Map<String, dynamic>.from(v);
+    return <String, dynamic>{};
+  }
+
+  // memberCount
+  final stats = getMap(raw['stats']);
+  final memberCount = toInt(
+    raw['memberCount'] ?? raw['membersCount'] ?? raw['guildMembers'] ?? stats['members'] ?? 0,
+  );
+
+  // socials
+  final socialsSrc = raw['socials'] ?? raw['links'] ?? raw['social'] ?? [];
+  final socials = toListOfMap(socialsSrc).map((s) {
+    final platform = toStr(s['platform'] ?? s['service'] ?? s['type'] ?? 'website');
+    final url = toStr(s['url'] ?? s['link'] ?? s['href'] ?? '');
+    final name = toStr(s['name'] ?? s['title'] ?? s['label'] ?? platform);
+    final desc = toStr(s['desc'] ?? s['description'] ?? '');
+    return {
+      'platform': platform,
+      'url': url,
+      'name': name,
+      'desc': desc,
+    };
+  }).toList();
+
+  // tournament
+  Map<String, dynamic> tournamentSrc = getMap(
+    raw['tournament'] ?? getMap(raw['events'])['tournament'] ?? raw['nextTournament'],
+  );
+  String tName = toStr(tournamentSrc['name'] ?? tournamentSrc['title'] ?? 'Tournament');
+  dynamic dayAny = tournamentSrc['dayOfWeek'] ?? tournamentSrc['weekday'] ?? tournamentSrc['day'];
+  int dayOfWeek;
+  if (dayAny is String) {
+    const days = {
+      'monday': 1,
+      'tuesday': 2,
+      'wednesday': 3,
+      'thursday': 4,
+      'friday': 5,
+      'saturday': 6,
+      'sunday': 7,
+    };
+    dayOfWeek = days[dayAny.toLowerCase()] ?? 1;
+  } else {
+    dayOfWeek = toInt(dayAny, 1);
+  }
+  int hour = toInt(tournamentSrc['hour'] ?? tournamentSrc['startHour'], 18);
+  int minute = toInt(tournamentSrc['minute'] ?? tournamentSrc['startMinute'], 0);
+  final startStr = toStr(tournamentSrc['start']);
+  if (startStr.contains(':')) {
+    final parts = startStr.split(':');
+    if (parts.isNotEmpty) hour = int.tryParse(parts[0]) ?? hour;
+    if (parts.length > 1) minute = int.tryParse(parts[1]) ?? minute;
+  }
+  final upcomingCount = toInt(
+    tournamentSrc['upcomingCount'] ?? tournamentSrc['occurrences'] ?? tournamentSrc['upcoming'] ?? 0,
+  );
+  final tournament = {
+    'name': tName,
+    'dayOfWeek': dayOfWeek.clamp(1, 7),
+    'hour': hour.clamp(0, 23),
+    'minute': minute.clamp(0, 59),
+    'upcomingCount': upcomingCount < 0 ? 0 : upcomingCount,
+  };
+
+  // lastWinner
+  final winnersRaw = raw['lastWinner'] ?? raw['winners'] ?? raw['lastWinners'];
+  Map<String, dynamic> lastWinner = {};
+  if (winnersRaw is Map) {
+    final w = getMap(winnersRaw);
+    lastWinner = {
+      'first': toStr(w['first'] ?? w['1st'] ?? w['gold'] ?? ''),
+      'second': toStr(w['second'] ?? w['2nd'] ?? w['silver'] ?? ''),
+      'date': toStr(w['date'] ?? w['timestamp'] ?? ''),
+      'note': toStr(w['note'] ?? w['details'] ?? ''),
+    };
+  } else if (winnersRaw is List) {
+    final list = winnersRaw.cast<dynamic>();
+    String first = list.isNotEmpty ? toStr(getMap(list[0])['name'] ?? list[0]) : '';
+    String second = list.length > 1 ? toStr(getMap(list[1])['name'] ?? list[1]) : '';
+    lastWinner = {
+      'first': first,
+      'second': second,
+      'date': '',
+      'note': '',
+    };
+  } else {
+    lastWinner = {'first': '', 'second': '', 'date': '', 'note': ''};
+  }
+
+  // scrims
+  final scrimsSrc = raw['scrims'] ?? getMap(raw['events'])['scrims'] ?? [];
+  final scrims = toListOfMap(scrimsSrc).map((s) {
+    final date = toStr(s['date'] ?? s['day'] ?? '');
+    final time = toStr(s['time'] ?? s['start'] ?? '');
+    final status = toStr(s['status'] ?? s['state'] ?? 'open');
+    final rank = toStr(s['rank'] ?? s['mmr'] ?? 'All ranks');
+    final format = toStr(s['format'] ?? s['mode'] ?? 'Scrim');
+    final spots = toInt(s['spots'] ?? s['available'] ?? s['capacity'], 0);
+    return {
+      'date': date,
+      'time': time,
+      'status': status.isEmpty ? 'open' : status,
+      'rank': rank.isEmpty ? 'All ranks' : rank,
+      'format': format.isEmpty ? 'Scrim' : format,
+      'spots': spots > 0 ? spots : null,
+    };
+  }).toList();
+
+  // coaching
+  final coachingSrc = raw['coaching'] ?? getMap(raw['events'])['coaching'] ?? [];
+  final coaching = toListOfMap(coachingSrc).map((c) {
+    final date = toStr(c['date'] ?? c['day'] ?? '');
+    final time = toStr(c['time'] ?? c['start'] ?? '');
+    final coach = toStr(c['coach'] ?? c['host'] ?? '');
+    final topic = toStr(c['topic'] ?? c['subject'] ?? 'Coaching Session');
+    final rank = toStr(c['rank'] ?? 'All ranks');
+    final spots = toInt(c['spots'] ?? c['available'] ?? c['capacity'], 0);
+    return {
+      'date': date,
+      'time': time,
+      'coach': coach,
+      'topic': topic,
+      'rank': rank.isEmpty ? 'All ranks' : rank,
+      'spots': spots > 0 ? spots : null,
+    };
+  }).toList();
+
+  return {
+    'memberCount': memberCount,
+    'socials': socials,
+    'tournament': tournament,
+    'lastWinner': lastWinner,
+    'scrims': scrims,
+    'coaching': coaching,
+  };
 }
 
 // ── HOME PAGE ──────────────────────────────────────────────────────────────
@@ -1042,30 +1267,49 @@ class _SchedulePageState extends State<SchedulePage> {
   String _getCountdown(Map<String, dynamic> tournament) {
     final now = DateTime.now();
     var next = DateTime.utc(
-      now.year, now.month, now.day,
-      tournament['hour'], tournament['minute'],
+      now.year,
+      now.month,
+      now.day,
+      tournament['hour'],
+      tournament['minute'],
     ).toLocal();
     while (next.weekday != tournament['dayOfWeek']) {
       next = next.add(const Duration(days: 1));
     }
     if (!next.isAfter(now)) next = next.add(const Duration(days: 7));
     final diff = next.difference(now);
-    if (diff.inDays > 0) return '${diff.inDays}d ${diff.inHours % 24}h ${diff.inMinutes % 60}m ${diff.inSeconds % 60}s';
-    if (diff.inHours > 0) return '${diff.inHours}h ${diff.inMinutes % 60}m ${diff.inSeconds % 60}s';
+    if (diff.inDays > 0) {
+      return '${diff.inDays}d ${diff.inHours % 24}h ${diff.inMinutes % 60}m ${diff.inSeconds % 60}s';
+    }
+    if (diff.inHours > 0) {
+      return '${diff.inHours}h ${diff.inMinutes % 60}m ${diff.inSeconds % 60}s';
+    }
     return '${diff.inMinutes}m ${diff.inSeconds % 60}s';
   }
 
   String _getWeekdayName(int day) {
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const days = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday'
+    ];
     return days[day - 1];
   }
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'open': return const Color(0xFF4CAF50);
-      case 'full': return const Color(0xFFFF6B6B);
-      case 'cancelled': return Colors.white38;
-      default: return const Color(0xFF6C63FF);
+      case 'open':
+        return const Color(0xFF4CAF50);
+      case 'full':
+        return const Color(0xFFFF6B6B);
+      case 'cancelled':
+        return Colors.white38;
+      default:
+        return const Color(0xFF6C63FF);
     }
   }
 
@@ -1086,13 +1330,16 @@ class _SchedulePageState extends State<SchedulePage> {
         future: _data,
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF)));
+            return const Center(
+                child: CircularProgressIndicator(color: Color(0xFF6C63FF)));
           }
 
           final tournament = snapshot.data!['tournament'];
           final lastWinner = snapshot.data!['lastWinner'];
-          final scrims = List<Map<String, dynamic>>.from(snapshot.data!['scrims'] ?? []);
-          final coaching = List<Map<String, dynamic>>.from(snapshot.data!['coaching'] ?? []);
+          final scrims =
+              List<Map<String, dynamic>>.from(snapshot.data!['scrims'] ?? []);
+          final coaching =
+              List<Map<String, dynamic>>.from(snapshot.data!['coaching'] ?? []);
           final weekday = _getWeekdayName(tournament['dayOfWeek']);
           final hour = tournament['hour'];
           final minute = tournament['minute'].toString().padLeft(2, '0');
@@ -1103,8 +1350,12 @@ class _SchedulePageState extends State<SchedulePage> {
             try {
               final dateStr = '${s['date']} ${s['time']}';
               final parsed = DateTime.tryParse(dateStr.replaceAll('/', '-'));
-              return parsed != null && parsed.isAfter(now) && s['status'] != 'cancelled';
-            } catch (_) { return true; }
+              return parsed != null &&
+                  parsed.isAfter(now) &&
+                  s['status'] != 'cancelled';
+            } catch (_) {
+              return true;
+            }
           }).toList();
 
           return Column(
@@ -1112,14 +1363,29 @@ class _SchedulePageState extends State<SchedulePage> {
               // ── TAB BAR ──
               Container(
                 color: const Color(0xFF12121A),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Row(
                   children: [
-                    _TabButton(label: 'Tournament', icon: Icons.emoji_events, selected: _selectedTab == 'tournament', onTap: () => setState(() => _selectedTab = 'tournament')),
+                    _TabButton(
+                        label: 'Tournament',
+                        icon: Icons.emoji_events,
+                        selected: _selectedTab == 'tournament',
+                        onTap: () =>
+                            setState(() => _selectedTab = 'tournament')),
                     const SizedBox(width: 8),
-                    _TabButton(label: 'Scrims', icon: Icons.sports_esports, selected: _selectedTab == 'scrims', onTap: () => setState(() => _selectedTab = 'scrims'), badge: upcomingScrims.length),
+                    _TabButton(
+                        label: 'Scrims',
+                        icon: Icons.sports_esports,
+                        selected: _selectedTab == 'scrims',
+                        onTap: () => setState(() => _selectedTab = 'scrims'),
+                        badge: upcomingScrims.length),
                     const SizedBox(width: 8),
-                    _TabButton(label: 'Coaching', icon: Icons.school, selected: _selectedTab == 'coaching', onTap: () => setState(() => _selectedTab = 'coaching')),
+                    _TabButton(
+                        label: 'Coaching',
+                        icon: Icons.school,
+                        selected: _selectedTab == 'coaching',
+                        onTap: () => setState(() => _selectedTab = 'coaching')),
                   ],
                 ),
               ),
@@ -1128,7 +1394,8 @@ class _SchedulePageState extends State<SchedulePage> {
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: _selectedTab == 'tournament'
-                      ? _buildTournamentTab(tournament, lastWinner, weekday, hour, minute)
+                      ? _buildTournamentTab(
+                          tournament, lastWinner, weekday, hour, minute)
                       : _selectedTab == 'scrims'
                           ? _buildScrimsTab(upcomingScrims, scrims)
                           : _buildCoachingTab(coaching),
@@ -1141,7 +1408,8 @@ class _SchedulePageState extends State<SchedulePage> {
     );
   }
 
-  Widget _buildTournamentTab(dynamic tournament, dynamic lastWinner, String weekday, int hour, String minute) {
+  Widget _buildTournamentTab(dynamic tournament, dynamic lastWinner,
+      String weekday, int hour, String minute) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1159,29 +1427,62 @@ class _SchedulePageState extends State<SchedulePage> {
           ),
           child: Column(
             children: [
-              const Text('Next Tournament', style: TextStyle(color: Colors.white70, fontSize: 14)),
+              const Text('Next Tournament',
+                  style: TextStyle(color: Colors.white70, fontSize: 14)),
               const SizedBox(height: 8),
-              Text(tournament['name'], style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+              Text(tournament['name'],
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-              Text(_getCountdown(tournament), style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w600, letterSpacing: 1.2)),
+              Text(_getCountdown(tournament),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.2)),
               const SizedBox(height: 8),
-              Text('Every $weekday at $hour:$minute UTC', style: const TextStyle(color: Colors.white60, fontSize: 13)),
+              Text('Every $weekday at $hour:$minute UTC',
+                  style: const TextStyle(color: Colors.white60, fontSize: 13)),
             ],
           ),
         ),
         const SizedBox(height: 20),
-        _ScheduleInfoRow(icon: Icons.event, label: 'Upcoming Tournaments', value: tournament['upcomingCount'].toString(), color: const Color(0xFF6C63FF)),
+        _ScheduleInfoRow(
+            icon: Icons.event,
+            label: 'Upcoming Tournaments',
+            value: tournament['upcomingCount'].toString(),
+            color: const Color(0xFF6C63FF)),
         const SizedBox(height: 12),
-        _ScheduleInfoRow(icon: Icons.repeat, label: 'Frequency', value: 'Weekly every $weekday', color: const Color(0xFFFF6B6B)),
+        _ScheduleInfoRow(
+            icon: Icons.repeat,
+            label: 'Frequency',
+            value: 'Weekly every $weekday',
+            color: const Color(0xFFFF6B6B)),
         const SizedBox(height: 12),
-        _ScheduleInfoRow(icon: Icons.access_time, label: 'Start Time', value: '$hour:$minute UTC (${hour + 1}:$minute CET)', color: const Color(0xFF4CAF50)),
+        _ScheduleInfoRow(
+            icon: Icons.access_time,
+            label: 'Start Time',
+            value: '$hour:$minute UTC (${hour + 1}:$minute CET)',
+            color: const Color(0xFF4CAF50)),
         const SizedBox(height: 24),
-        const Text('Last Tournament Results', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text('Last Tournament Results',
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         if (lastWinner != null) ...[
-          _WinnerCard(place: '🥇 1st', name: lastWinner['first'] ?? 'TBD', color: const Color(0xFFFFD700)),
+          _WinnerCard(
+              place: '🥇 1st',
+              name: lastWinner['first'] ?? 'TBD',
+              color: const Color(0xFFFFD700)),
           const SizedBox(height: 8),
-          _WinnerCard(place: '🥈 2nd', name: lastWinner['second'] ?? 'TBD', color: const Color(0xFFB0BEC5)),
+          _WinnerCard(
+              place: '🥈 2nd',
+              name: lastWinner['second'] ?? 'TBD',
+              color: const Color(0xFFB0BEC5)),
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
@@ -1194,9 +1495,13 @@ class _SchedulePageState extends State<SchedulePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(lastWinner['note'] ?? '', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                Text(lastWinner['note'] ?? '',
+                    style:
+                        const TextStyle(color: Colors.white70, fontSize: 13)),
                 const SizedBox(height: 4),
-                Text(lastWinner['date'] ?? '', style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                Text(lastWinner['date'] ?? '',
+                    style:
+                        const TextStyle(color: Colors.white38, fontSize: 12)),
               ],
             ),
           ),
@@ -1205,18 +1510,21 @@ class _SchedulePageState extends State<SchedulePage> {
     );
   }
 
-  Widget _buildScrimsTab(List<Map<String, dynamic>> upcoming, List<Map<String, dynamic>> all) {
+  Widget _buildScrimsTab(
+      List<Map<String, dynamic>> upcoming, List<Map<String, dynamic>> all) {
     if (all.isEmpty) {
-      return Center(
+      return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const SizedBox(height: 60),
-            const Icon(Icons.sports_esports, color: Colors.white24, size: 64),
-            const SizedBox(height: 16),
-            const Text('No scrims scheduled', style: TextStyle(color: Colors.white54, fontSize: 16)),
-            const SizedBox(height: 8),
-            const Text('Check back later or ask a mod to add one!', style: TextStyle(color: Colors.white38, fontSize: 13)),
+            SizedBox(height: 60),
+            Icon(Icons.sports_esports, color: Colors.white24, size: 64),
+            SizedBox(height: 16),
+            Text('No scrims scheduled',
+                style: TextStyle(color: Colors.white54, fontSize: 16)),
+            SizedBox(height: 8),
+            Text('Check back later or ask a mod to add one!',
+                style: TextStyle(color: Colors.white38, fontSize: 13)),
           ],
         ),
       );
@@ -1226,16 +1534,25 @@ class _SchedulePageState extends State<SchedulePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (upcoming.isNotEmpty) ...[
-          const Text('Upcoming Scrims', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('Upcoming Scrims',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
-          ...upcoming.map((s) => _ScrimCard(scrim: s, statusColor: _getStatusColor(s['status'] ?? 'open'))),
+          ...upcoming.map((s) => _ScrimCard(
+              scrim: s, statusColor: _getStatusColor(s['status'] ?? 'open'))),
         ],
         if (upcoming.length < all.length) ...[
           const SizedBox(height: 24),
-          const Text('Past Scrims', style: TextStyle(color: Colors.white54, fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text('Past Scrims',
+              style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           ...all.where((s) => !upcoming.contains(s)).take(5).map((s) =>
-            _ScrimCard(scrim: s, statusColor: Colors.white24, isPast: true)),
+              _ScrimCard(scrim: s, statusColor: Colors.white24, isPast: true)),
         ],
       ],
     );
@@ -1243,17 +1560,17 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Widget _buildCoachingTab(List<Map<String, dynamic>> coaching) {
     if (coaching.isEmpty) {
-      return Center(
+      return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const SizedBox(height: 60),
-            const Icon(Icons.school, color: Colors.white24, size: 64),
-            const SizedBox(height: 16),
-            const Text('No coaching sessions scheduled',
+            SizedBox(height: 60),
+            Icon(Icons.school, color: Colors.white24, size: 64),
+            SizedBox(height: 16),
+            Text('No coaching sessions scheduled',
                 style: TextStyle(color: Colors.white54, fontSize: 16)),
-            const SizedBox(height: 8),
-            const Text('Check back later!',
+            SizedBox(height: 8),
+            Text('Check back later!',
                 style: TextStyle(color: Colors.white38, fontSize: 13)),
           ],
         ),
@@ -1263,9 +1580,12 @@ class _SchedulePageState extends State<SchedulePage> {
     final now = DateTime.now();
     final upcoming = coaching.where((c) {
       try {
-        final parsed = DateTime.tryParse('${c['date']} ${c['time']}'.replaceAll('/', '-'));
+        final parsed =
+            DateTime.tryParse('${c['date']} ${c['time']}'.replaceAll('/', '-'));
         return parsed != null && parsed.isAfter(now);
-      } catch (_) { return true; }
+      } catch (_) {
+        return true;
+      }
     }).toList();
 
     final past = coaching.where((c) => !upcoming.contains(c)).toList();
@@ -1275,14 +1595,20 @@ class _SchedulePageState extends State<SchedulePage> {
       children: [
         if (upcoming.isNotEmpty) ...[
           const Text('Upcoming Sessions',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           ...upcoming.map((c) => _CoachingCard(session: c)),
         ],
         if (past.isNotEmpty) ...[
           const SizedBox(height: 24),
           const Text('Past Sessions',
-              style: TextStyle(color: Colors.white54, fontSize: 16, fontWeight: FontWeight.bold)),
+              style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           ...past.take(5).map((c) => _CoachingCard(session: c, isPast: true)),
         ],
@@ -1346,9 +1672,11 @@ class _CoachingCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(session['date'] ?? '',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 12)),
                   Text(session['time'] ?? '',
-                      style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                      style:
+                          const TextStyle(color: Colors.white38, fontSize: 11)),
                 ],
               ),
             ],
@@ -1356,7 +1684,9 @@ class _CoachingCard extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              _ScrimChip(icon: Icons.military_tech, label: session['rank'] ?? 'All ranks'),
+              _ScrimChip(
+                  icon: Icons.military_tech,
+                  label: session['rank'] ?? 'All ranks'),
               const SizedBox(width: 8),
               if (spots != null)
                 _ScrimChip(icon: Icons.people, label: '$spots spots'),
@@ -1375,7 +1705,12 @@ class _TabButton extends StatelessWidget {
   final VoidCallback onTap;
   final int badge;
 
-  const _TabButton({required this.label, required this.icon, required this.selected, required this.onTap, this.badge = 0});
+  const _TabButton(
+      {required this.label,
+      required this.icon,
+      required this.selected,
+      required this.onTap,
+      this.badge = 0});
 
   @override
   Widget build(BuildContext context) {
@@ -1391,15 +1726,27 @@ class _TabButton extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 16, color: selected ? Colors.white : Colors.white54),
+              Icon(icon,
+                  size: 16, color: selected ? Colors.white : Colors.white54),
               const SizedBox(width: 6),
-              Text(label, style: TextStyle(color: selected ? Colors.white : Colors.white54, fontSize: 13, fontWeight: FontWeight.bold)),
+              Text(label,
+                  style: TextStyle(
+                      color: selected ? Colors.white : Colors.white54,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold)),
               if (badge > 0) ...[
                 const SizedBox(width: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: const Color(0xFFFF6B6B), borderRadius: BorderRadius.circular(10)),
-                  child: Text('$badge', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                      color: const Color(0xFFFF6B6B),
+                      borderRadius: BorderRadius.circular(10)),
+                  child: Text('$badge',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold)),
                 ),
               ],
             ],
@@ -1415,7 +1762,8 @@ class _ScrimCard extends StatelessWidget {
   final Color statusColor;
   final bool isPast;
 
-  const _ScrimCard({required this.scrim, required this.statusColor, this.isPast = false});
+  const _ScrimCard(
+      {required this.scrim, required this.statusColor, this.isPast = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1428,7 +1776,8 @@ class _ScrimCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF12121A),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isPast ? Colors.white12 : statusColor.withOpacity(0.3)),
+        border: Border.all(
+            color: isPast ? Colors.white12 : statusColor.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1448,28 +1797,41 @@ class _ScrimCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(scrim['format'] ?? 'Scrim', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
-                    Text('${scrim['date']} at ${scrim['time']}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                    Text(scrim['format'] ?? 'Scrim',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15)),
+                    Text('${scrim['date']} at ${scrim['time']}',
+                        style: const TextStyle(
+                            color: Colors.white54, fontSize: 12)),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(status[0].toUpperCase() + status.substring(1),
-                    style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                    style: TextStyle(
+                        color: statusColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold)),
               ),
             ],
           ),
           const SizedBox(height: 10),
           Row(
             children: [
-              _ScrimChip(icon: Icons.military_tech, label: scrim['rank'] ?? 'All ranks'),
+              _ScrimChip(
+                  icon: Icons.military_tech,
+                  label: scrim['rank'] ?? 'All ranks'),
               const SizedBox(width: 8),
-              if (spots != null) _ScrimChip(icon: Icons.people, label: '$spots spots'),
+              if (spots != null)
+                _ScrimChip(icon: Icons.people, label: '$spots spots'),
             ],
           ),
         ],
@@ -1497,7 +1859,8 @@ class _ScrimChip extends StatelessWidget {
         children: [
           Icon(icon, size: 12, color: Colors.white54),
           const SizedBox(width: 4),
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+          Text(label,
+              style: const TextStyle(color: Colors.white54, fontSize: 12)),
         ],
       ),
     );
@@ -1656,7 +2019,8 @@ class _StatsPageState extends State<StatsPage> {
                       style: TextStyle(color: Colors.white54)),
                   const SizedBox(height: 12),
                   ElevatedButton(
-                    onPressed: () => setState(() => _leaderboard = _fetchLeaderboard()),
+                    onPressed: () =>
+                        setState(() => _leaderboard = _fetchLeaderboard()),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -1700,7 +2064,8 @@ class _StatsPageState extends State<StatsPage> {
 
                 // Leaderboard toggle
                 GestureDetector(
-                  onTap: () => setState(() => _showLeaderboard = !_showLeaderboard),
+                  onTap: () =>
+                      setState(() => _showLeaderboard = !_showLeaderboard),
                   child: Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
@@ -1712,7 +2077,8 @@ class _StatsPageState extends State<StatsPage> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.leaderboard, color: Color(0xFF6C63FF), size: 22),
+                        const Icon(Icons.leaderboard,
+                            color: Color(0xFF6C63FF), size: 22),
                         const SizedBox(width: 12),
                         const Text('Leaderboard',
                             style: TextStyle(
@@ -1761,19 +2127,28 @@ class _StatsPageState extends State<StatsPage> {
                           SizedBox(
                             width: 32,
                             child: Text(
-                              rank == 1 ? '🥇' : rank == 2 ? '🥈' : rank == 3 ? '🥉' : '#$rank',
-                              style: const TextStyle(color: Colors.white54, fontSize: 14),
+                              rank == 1
+                                  ? '🥇'
+                                  : rank == 2
+                                      ? '🥈'
+                                      : rank == 3
+                                          ? '🥉'
+                                          : '#$rank',
+                              style: const TextStyle(
+                                  color: Colors.white54, fontSize: 14),
                               textAlign: TextAlign.center,
                             ),
                           ),
                           const SizedBox(width: 8),
                           CircleAvatar(
                             radius: 16,
-                            backgroundImage: avatar != null ? NetworkImage(avatar) : null,
+                            backgroundImage:
+                                avatar != null ? NetworkImage(avatar) : null,
                             backgroundColor: const Color(0xFF6C63FF),
                             child: avatar == null
                                 ? Text(username[0].toUpperCase(),
-                                    style: const TextStyle(color: Colors.white, fontSize: 12))
+                                    style: const TextStyle(
+                                        color: Colors.white, fontSize: 12))
                                 : null,
                           ),
                           const SizedBox(width: 10),
@@ -1784,7 +2159,9 @@ class _StatsPageState extends State<StatsPage> {
                                 Text(
                                   username,
                                   style: TextStyle(
-                                    color: isMe ? const Color(0xFF6C63FF) : Colors.white,
+                                    color: isMe
+                                        ? const Color(0xFF6C63FF)
+                                        : Colors.white,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -1839,7 +2216,8 @@ class _StatsPageState extends State<StatsPage> {
                 backgroundColor: Colors.white24,
                 child: widget.user.avatar == null
                     ? Text(widget.user.username[0].toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontSize: 22))
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 22))
                     : null,
               ),
               const SizedBox(width: 12),
@@ -1853,12 +2231,14 @@ class _StatsPageState extends State<StatsPage> {
                             fontSize: 18,
                             fontWeight: FontWeight.bold)),
                     Text('Rank #$rank on the server',
-                        style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 13)),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.white24,
                   borderRadius: BorderRadius.circular(20),
@@ -1910,7 +2290,9 @@ class _StatsPageState extends State<StatsPage> {
         const SizedBox(height: 4),
         Text(value,
             style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16)),
         Text(label,
             style: const TextStyle(color: Colors.white70, fontSize: 11)),
       ],
@@ -2298,16 +2680,19 @@ class _SettingsPageState extends State<SettingsPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.bug_report),
-            onPressed: () => FeedbackSystem.showBugReportDialog(context, user: widget.user, currentScreen: 'Settings'),
+            onPressed: () => FeedbackSystem.showBugReportDialog(context,
+                user: widget.user, currentScreen: 'Settings'),
           ),
           IconButton(
             icon: const Icon(Icons.feedback_outlined),
-            onPressed: () => FeedbackSystem.showFeedbackDialog(context, user: widget.user),
+            onPressed: () =>
+                FeedbackSystem.showFeedbackDialog(context, user: widget.user),
           ),
         ],
       ),
       body: _rolesLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF)))
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF6C63FF)))
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
@@ -2342,7 +2727,8 @@ class _SettingsPageState extends State<SettingsPage> {
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold)),
                             Text('@${widget.user.username}',
-                                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                                style: const TextStyle(
+                                    color: Colors.white54, fontSize: 12)),
                           ],
                         ),
                       ),
@@ -2350,7 +2736,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         onPressed: widget.onLogout,
                         icon: const Icon(Icons.logout),
                         label: const Text('Logout'),
-                        style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                        style: TextButton.styleFrom(
+                            foregroundColor: Colors.redAccent),
                       ),
                     ],
                   ),
@@ -2359,7 +2746,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(height: 16),
 
                 // Appearance
-                _SectionHeader('Appearance'),
+                const _SectionHeader('Appearance'),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -2372,13 +2759,15 @@ class _SettingsPageState extends State<SettingsPage> {
                       const Icon(Icons.dark_mode, color: Colors.white70),
                       const SizedBox(width: 12),
                       const Expanded(
-                        child: Text('Dark Mode', style: TextStyle(color: Colors.white)),
+                        child: Text('Dark Mode',
+                            style: TextStyle(color: Colors.white)),
                       ),
                       Switch(
                         value: _isDarkMode,
                         onChanged: (v) {
                           setState(() => _isDarkMode = v);
-                          FusionApp.of(context)?.setThemeMode(v ? ThemeMode.dark : ThemeMode.light);
+                          FusionApp.of(context)?.setThemeMode(
+                              v ? ThemeMode.dark : ThemeMode.light);
                         },
                       )
                     ],
@@ -2388,7 +2777,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(height: 16),
 
                 // Notifications
-                _SectionHeader('Notifications'),
+                const _SectionHeader('Notifications'),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -2398,14 +2787,17 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.notifications_active, color: Colors.white70),
+                      const Icon(Icons.notifications_active,
+                          color: Colors.white70),
                       const SizedBox(width: 12),
                       const Expanded(
-                        child: Text('Enable Notifications', style: TextStyle(color: Colors.white)),
+                        child: Text('Enable Notifications',
+                            style: TextStyle(color: Colors.white)),
                       ),
                       Switch(
                         value: _notificationsEnabled,
-                        onChanged: (v) => setState(() => _notificationsEnabled = v),
+                        onChanged: (v) =>
+                            setState(() => _notificationsEnabled = v),
                       )
                     ],
                   ),
@@ -2414,13 +2806,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(height: 16),
 
                 // Roles
-                _SectionHeader('Roles'),
+                const _SectionHeader('Roles'),
                 _buildRolesSection(),
 
                 const SizedBox(height: 24),
 
                 // About
-                _SectionHeader('About'),
+                const _SectionHeader('About'),
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -2428,14 +2820,21 @@ class _SettingsPageState extends State<SettingsPage> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.white12),
                   ),
-                  child: Column(
+                  child: const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${Config.appName} • ${Config.appBuild}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text('Version ${Config.appVersion}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                      const SizedBox(height: 8),
-                      Text(Config.copyright, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                      Text('${Config.appName} • ${Config.appBuild}',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold)),
+                      SizedBox(height: 4),
+                      Text('Version ${Config.appVersion}',
+                          style: TextStyle(
+                              color: Colors.white54, fontSize: 12)),
+                      SizedBox(height: 8),
+                      Text(Config.copyright,
+                          style: TextStyle(
+                              color: Colors.white38, fontSize: 11)),
                     ],
                   ),
                 ),
@@ -2446,7 +2845,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _buildRolesSection() {
     // Group roles by category for display
-    final rolesByCategory = <String, List<MapEntry<String, Map<String, dynamic>>>>{};
+    final rolesByCategory =
+        <String, List<MapEntry<String, Map<String, dynamic>>>>{};
     for (final entry in _availableRoles.entries) {
       final category = entry.value['category'] as String;
       rolesByCategory.putIfAbsent(category, () => []).add(entry);
@@ -2461,7 +2861,8 @@ class _SettingsPageState extends State<SettingsPage> {
             Padding(
               padding: const EdgeInsets.only(bottom: 8, top: 8),
               child: Text(cat.key,
-                  style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+                  style: const TextStyle(
+                      color: Colors.white70, fontWeight: FontWeight.bold)),
             ),
             ...cat.value.map((entry) {
               final roleId = entry.key;
@@ -2482,7 +2883,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     Container(
                       width: 10,
                       height: 10,
-                      decoration: BoxDecoration(color: color.withOpacity(0.8), shape: BoxShape.circle),
+                      decoration: BoxDecoration(
+                          color: color.withOpacity(0.8),
+                          shape: BoxShape.circle),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -2492,7 +2895,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     Switch(
                       value: enabled,
                       onChanged: (v) => _toggleRole(roleId, v),
-                      activeColor: color,
+                      activeThumbColor: color,
                     )
                   ],
                 ),
@@ -2513,7 +2916,9 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      child: Text(title,
+          style: const TextStyle(
+              color: Colors.white, fontWeight: FontWeight.bold)),
     );
   }
 }
