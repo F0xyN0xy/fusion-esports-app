@@ -256,7 +256,6 @@ class _DiscordChatPageState extends State<DiscordChatPage> {
               ],
             ),
           ),
-
           Expanded(
             child: _messages.isEmpty
                 ? const Center(
@@ -293,7 +292,6 @@ class _DiscordChatPageState extends State<DiscordChatPage> {
                     },
                   ),
           ),
-
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(

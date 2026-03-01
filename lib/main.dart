@@ -265,41 +265,45 @@ class _AuthWrapperState extends State<AuthWrapper> {
       }
     });
   }
-  Future<void> _checkForUpdate() async {
-  try {
-    final data = await fetchBinData();
-    final latestVersion = data['appVersion'] ?? Config.appVersion;
-    if (latestVersion != Config.appVersion && mounted) {
-      _showUpdateDialog();
-    }
-  } catch (_) {}
-}
 
-void _showUpdateDialog() {
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => AlertDialog(
-      backgroundColor: const Color(0xFF12121A),
-      title: const Text('Update Required', style: TextStyle(color: Colors.white)),
-      content: const Text(
-        'A new version of the app is available. Please download the latest version from GitHub.',
-        style: TextStyle(color: Colors.white70),
-      ),
-      actions: [
-        ElevatedButton.icon(
-          icon: const Icon(Icons.download),
-          label: const Text('Download Update'),
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6C63FF)),
-          onPressed: () => launchUrl(
-            Uri.parse('https://github.com/f0xyn0xy/fusion-esports-app/releases/latest'),
-            mode: LaunchMode.externalApplication,
-          ),
+  Future<void> _checkForUpdate() async {
+    try {
+      final data = await fetchBinData();
+      final latestVersion = data['appVersion'] ?? Config.appVersion;
+      if (latestVersion != Config.appVersion && mounted) {
+        _showUpdateDialog();
+      }
+    } catch (_) {}
+  }
+
+  void _showUpdateDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF12121A),
+        title: const Text('Update Required',
+            style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'A new version of the app is available. Please download the latest version from GitHub.',
+          style: TextStyle(color: Colors.white70),
         ),
-      ],
-    ),
-  );
-}
+        actions: [
+          ElevatedButton.icon(
+            icon: const Icon(Icons.download),
+            label: const Text('Download Update'),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6C63FF)),
+            onPressed: () => launchUrl(
+              Uri.parse(
+                  'https://github.com/f0xyn0xy/fusion-esports-app/releases/latest'),
+              mode: LaunchMode.externalApplication,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -559,30 +563,32 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-    HomePage(user: widget.user),
-    const SchedulePage(),
-    StatsPage(user: widget.user),
-    const NewsPage(),
-    DiscordChatPage(user: widget.user),
-    SettingsPage(user: widget.user, onLogout: widget.onLogout),
-  ];
+      HomePage(user: widget.user),
+      const SchedulePage(),
+      StatsPage(user: widget.user),
+      const NewsPage(),
+      DiscordChatPage(user: widget.user),
+      SettingsPage(user: widget.user, onLogout: widget.onLogout),
+    ];
 
-  final destinations = [
-    const NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-    const NavigationDestination(icon: Icon(Icons.calendar_month), label: 'Schedule'),
-    const NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Stats'),
-    const NavigationDestination(icon: Icon(Icons.newspaper), label: 'News'),
-    const NavigationDestination(icon: Icon(Icons.chat_bubble), label: 'Chat'),
-    const NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
-  ];
+    final destinations = [
+      const NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
+      const NavigationDestination(
+          icon: Icon(Icons.calendar_month), label: 'Schedule'),
+      const NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Stats'),
+      const NavigationDestination(icon: Icon(Icons.newspaper), label: 'News'),
+      const NavigationDestination(icon: Icon(Icons.chat_bubble), label: 'Chat'),
+      const NavigationDestination(
+          icon: Icon(Icons.settings), label: 'Settings'),
+    ];
 
     return Scaffold(
       body: pages[_currentIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
-        setState(() => _currentIndex = index);
-      },
+          setState(() => _currentIndex = index);
+        },
         backgroundColor: const Color(0xFF12121A),
         destinations: destinations,
       ),
