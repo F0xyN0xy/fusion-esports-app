@@ -558,62 +558,33 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isBetaTester = DiscordChatSystem.isAuthorizedBetaTester(widget.user);
-
     final pages = [
-      HomePage(user: widget.user),
-      const SchedulePage(),
-      StatsPage(user: widget.user),
-      const NewsPage(),
-      // Chat page - locked or unlocked
-      isBetaTester
-          ? DiscordChatPage(user: widget.user)
-          : const LockedChatPage(),
-      SettingsPage(user: widget.user, onLogout: widget.onLogout),
-    ];
+    HomePage(user: widget.user),
+    const SchedulePage(),
+    StatsPage(user: widget.user),
+    const NewsPage(),
+    DiscordChatPage(user: widget.user),
+    SettingsPage(user: widget.user, onLogout: widget.onLogout),
+  ];
 
-    final destinations = [
-      const NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-      const NavigationDestination(
-          icon: Icon(Icons.calendar_month), label: 'Schedule'),
-      const NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Stats'),
-      const NavigationDestination(icon: Icon(Icons.newspaper), label: 'News'),
-      // Chat with lock indicator
-      NavigationDestination(
-        icon: Icon(
-          isBetaTester ? Icons.chat_bubble : Icons.lock_outline,
-          color: isBetaTester ? null : Colors.orange,
-        ),
-        label: isBetaTester ? 'Chat' : 'Locked',
-      ),
-      const NavigationDestination(
-          icon: Icon(Icons.settings), label: 'Settings'),
-    ];
+  final destinations = [
+    const NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
+    const NavigationDestination(icon: Icon(Icons.calendar_month), label: 'Schedule'),
+    const NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Stats'),
+    const NavigationDestination(icon: Icon(Icons.newspaper), label: 'News'),
+    const NavigationDestination(icon: Icon(Icons.chat_bubble), label: 'Chat'),
+    const NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
+  ];
 
     return Scaffold(
       body: pages[_currentIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
-          // Prevent accessing locked chat
-          if (index == 4 && !isBetaTester) {
-            _showLockedMessage();
-            return;
-          }
-          setState(() => _currentIndex = index);
-        },
+        setState(() => _currentIndex = index);
+      },
         backgroundColor: const Color(0xFF12121A),
         destinations: destinations,
-      ),
-    );
-  }
-
-  void _showLockedMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('🔒 Beta chat is locked. Full release coming soon.'),
-        backgroundColor: Colors.orange,
-        duration: Duration(seconds: 2),
       ),
     );
   }

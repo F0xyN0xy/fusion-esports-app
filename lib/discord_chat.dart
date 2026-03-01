@@ -1,39 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import 'dart:async';
 import 'config.dart';
 import 'main.dart';
 
 class DiscordChatSystem {
-  // Your Netlify functions
   static const String _getMessagesUrl =
       '${Config.baseUrl}/.netlify/functions/get_messages';
   static const String _sendMessageUrl =
       '${Config.baseUrl}/.netlify/functions/send_messages';
 
-  // Discord channel ID for chat (you need to set this)
   static const String _chatChannelId = '1476303134576873614';
-
-  // Beta tester IDs
-  static const Set<String> _authorizedBetaTesters = {
-    '1282789957664243777', // Replace with your Discord ID
-    '1472271691513204977',
-    '1472271559837351937',
-    '1473133043312230481',
-    '1472271494469128405',
-  };
-
-  static const Set<String> _betaRoles = {
-    '1476307738861768865',
-  };
-
-  static bool isAuthorizedBetaTester(DiscordUser user) {
-    final hasBetaRole = user.roles.any((role) => _betaRoles.contains(role));
-    final isAuthorized = _authorizedBetaTesters.contains(user.id);
-    return hasBetaRole || isAuthorized;
-  }
 
   // Poll messages every 3 seconds
   static Stream<List<ChatMessage>> get messagesStream async* {
@@ -228,7 +206,6 @@ class _DiscordChatPageState extends State<DiscordChatPage> {
           ],
         ),
         actions: [
-          // Connection status
           StreamBuilder<List<ChatMessage>>(
             stream: DiscordChatSystem.messagesStream,
             builder: (context, snapshot) {
@@ -262,11 +239,10 @@ class _DiscordChatPageState extends State<DiscordChatPage> {
       ),
       body: Column(
         children: [
-          // Bot status banner
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-            color: const Color(0xFF5865F2).withOpacity(0.15),
+            color: const Color(0xFF5865F2).withValues(alpha: 0.15),
             child: const Row(
               children: [
                 Icon(Icons.smart_toy, color: Color(0xFF5865F2), size: 16),
@@ -281,7 +257,6 @@ class _DiscordChatPageState extends State<DiscordChatPage> {
             ),
           ),
 
-          // Messages list
           Expanded(
             child: _messages.isEmpty
                 ? const Center(
@@ -319,13 +294,12 @@ class _DiscordChatPageState extends State<DiscordChatPage> {
                   ),
           ),
 
-          // Input area
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: const Color(0xFF12121A),
               border: Border(
-                top: BorderSide(color: Colors.white.withOpacity(0.1)),
+                top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
               ),
             ),
             child: SafeArea(
@@ -475,64 +449,6 @@ class _ChatBubble extends StatelessWidget {
                   color: Colors.white38,
                   fontSize: 10,
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Locked chat page
-class LockedChatPage extends StatelessWidget {
-  const LockedChatPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF12121A),
-        title: const Text('Chat'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.lock_outline,
-              size: 64,
-              color: Colors.orange.withOpacity(0.5),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Beta Feature Locked',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                'Chat is currently in closed beta testing.\nFull release coming in v3.0.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white54),
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                launchUrl(Uri.parse(Config.discordInviteUrl));
-              },
-              icon: const Icon(Icons.login),
-              label: const Text('Apply for Beta Access'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF5865F2),
-                foregroundColor: Colors.white,
               ),
             ),
           ],
