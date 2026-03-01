@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'dart:io';
 import 'config.dart';
 import 'main.dart';
 
@@ -59,12 +61,29 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
     super.dispose();
   }
 
+  Future<Map<String, String>> _getDeviceInfo() async {
+    final deviceInfo = DeviceInfoPlugin();
+    if (Platform.isAndroid) {
+      final info = await deviceInfo.androidInfo;
+      return {
+        'platform': 'Android',
+        'version': info.version.release,
+        'model': info.model,
+        'brand': info.brand,
+        'sdk': info.version.sdkInt.toString(),
+      };
+    }
+    return {'platform': 'Unknown'};
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isSubmitting = true);
 
     try {
+      final device = await _getDeviceInfo();
+
+      // Build payload for feedback sheet only
       final payload = {
         'type': 'feedback',
         'timestamp': DateTime.now().toIso8601String(),
@@ -73,6 +92,8 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
         'category': _category,
         'rating': _rating,
         'message': _feedbackController.text,
+        'appVersion': Config.appVersion,
+        'device': device,
       };
 
       final response = await http.post(
@@ -335,6 +356,21 @@ class _BugReportSheetState extends State<_BugReportSheet> {
     _descriptionController.dispose();
     _stepsController.dispose();
     super.dispose();
+  }
+
+  Future<Map<String, String>> _getDeviceInfo() async {
+    final deviceInfo = DeviceInfoPlugin();
+    if (Platform.isAndroid) {
+      final info = await deviceInfo.androidInfo;
+      return {
+        'platform': 'Android',
+        'version': info.version.release,
+        'model': info.model,
+        'brand': info.brand,
+        'sdk': info.version.sdkInt.toString(),
+      };
+    }
+    return {'platform': 'Unknown'};
   }
 
   Future<void> _submit() async {

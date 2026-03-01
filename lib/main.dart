@@ -123,7 +123,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
     super.initState();
     _loadSavedUser();
     _initDeepLinks();
-    _setupNotifications(); // add this
+    _setupNotifications();
+    _checkForUpdate();
   }
 
   @override
@@ -217,51 +218,88 @@ class _AuthWrapperState extends State<AuthWrapper> {
       setState(() => _isLoading = false);
     }
   }
+
   Future<void> _setupNotifications() async {
-  final messaging = FirebaseMessaging.instance;
+    final messaging = FirebaseMessaging.instance;
 
-  await messaging.requestPermission();
+    await messaging.requestPermission();
 
-  await messaging.subscribeToTopic('all');
-  await messaging.subscribeToTopic('tournaments');
-  await messaging.subscribeToTopic('scrims');
-  await messaging.subscribeToTopic('coaching');
+    await messaging.subscribeToTopic('all');
+    await messaging.subscribeToTopic('tournaments');
+    await messaging.subscribeToTopic('scrims');
+    await messaging.subscribeToTopic('coaching');
 
-  FirebaseMessaging.onMessage.listen((message) {
-    if (message.notification != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.notifications, color: Colors.white),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      message.notification!.title ?? '',
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      message.notification!.body ?? '',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                  ],
+    FirebaseMessaging.onMessage.listen((message) {
+      if (message.notification != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.notifications, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        message.notification!.title ?? '',
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        message.notification!.body ?? '',
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
+            backgroundColor: const Color(0xFF6C63FF),
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
           ),
-          backgroundColor: const Color(0xFF6C63FF),
-          duration: const Duration(seconds: 4),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  });
+        );
+      }
+    });
   }
+  Future<void> _checkForUpdate() async {
+  try {
+    final data = await fetchBinData();
+    final latestVersion = data['appVersion'] ?? Config.appVersion;
+    if (latestVersion != Config.appVersion && mounted) {
+      _showUpdateDialog();
+    }
+  } catch (_) {}
+}
+
+void _showUpdateDialog() {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => AlertDialog(
+      backgroundColor: const Color(0xFF12121A),
+      title: const Text('Update Required', style: TextStyle(color: Colors.white)),
+      content: const Text(
+        'A new version of the app is available. Please download the latest version from GitHub.',
+        style: TextStyle(color: Colors.white70),
+      ),
+      actions: [
+        ElevatedButton.icon(
+          icon: const Icon(Icons.download),
+          label: const Text('Download Update'),
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6C63FF)),
+          onPressed: () => launchUrl(
+            Uri.parse('https://github.com/f0xyn0xy/fusion-esports-app/releases/latest'),
+            mode: LaunchMode.externalApplication,
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -638,15 +676,17 @@ Map<String, dynamic> _normalizeBinData(Map<String, dynamic> raw) {
   }
 
   // memberCount
-  final stats = getMap(raw['stats']);
-  final memberCount = toInt(
-    raw['memberCount'] ?? raw['membersCount'] ?? raw['guildMembers'] ?? stats['members'] ?? 0,
-  );
+  final memberCount = raw['memberCount'] ??
+      raw['membersCount'] ??
+      raw['guildMembers'] ??
+      raw['stats']?['members'] ??
+      0;
 
   // socials
   final socialsSrc = raw['socials'] ?? raw['links'] ?? raw['social'] ?? [];
   final socials = toListOfMap(socialsSrc).map((s) {
-    final platform = toStr(s['platform'] ?? s['service'] ?? s['type'] ?? 'website');
+    final platform =
+        toStr(s['platform'] ?? s['service'] ?? s['type'] ?? 'website');
     final url = toStr(s['url'] ?? s['link'] ?? s['href'] ?? '');
     final name = toStr(s['name'] ?? s['title'] ?? s['label'] ?? platform);
     final desc = toStr(s['desc'] ?? s['description'] ?? '');
@@ -660,10 +700,15 @@ Map<String, dynamic> _normalizeBinData(Map<String, dynamic> raw) {
 
   // tournament
   Map<String, dynamic> tournamentSrc = getMap(
-    raw['tournament'] ?? getMap(raw['events'])['tournament'] ?? raw['nextTournament'],
+    raw['tournament'] ??
+        getMap(raw['events'])['tournament'] ??
+        raw['nextTournament'],
   );
-  String tName = toStr(tournamentSrc['name'] ?? tournamentSrc['title'] ?? 'Tournament');
-  dynamic dayAny = tournamentSrc['dayOfWeek'] ?? tournamentSrc['weekday'] ?? tournamentSrc['day'];
+  String tName =
+      toStr(tournamentSrc['name'] ?? tournamentSrc['title'] ?? 'Tournament');
+  dynamic dayAny = tournamentSrc['dayOfWeek'] ??
+      tournamentSrc['weekday'] ??
+      tournamentSrc['day'];
   int dayOfWeek;
   if (dayAny is String) {
     const days = {
@@ -680,7 +725,8 @@ Map<String, dynamic> _normalizeBinData(Map<String, dynamic> raw) {
     dayOfWeek = toInt(dayAny, 1);
   }
   int hour = toInt(tournamentSrc['hour'] ?? tournamentSrc['startHour'], 18);
-  int minute = toInt(tournamentSrc['minute'] ?? tournamentSrc['startMinute'], 0);
+  int minute =
+      toInt(tournamentSrc['minute'] ?? tournamentSrc['startMinute'], 0);
   final startStr = toStr(tournamentSrc['start']);
   if (startStr.contains(':')) {
     final parts = startStr.split(':');
@@ -688,7 +734,10 @@ Map<String, dynamic> _normalizeBinData(Map<String, dynamic> raw) {
     if (parts.length > 1) minute = int.tryParse(parts[1]) ?? minute;
   }
   final upcomingCount = toInt(
-    tournamentSrc['upcomingCount'] ?? tournamentSrc['occurrences'] ?? tournamentSrc['upcoming'] ?? 0,
+    tournamentSrc['upcomingCount'] ??
+        tournamentSrc['occurrences'] ??
+        tournamentSrc['upcoming'] ??
+        0,
   );
   final tournament = {
     'name': tName,
@@ -711,8 +760,10 @@ Map<String, dynamic> _normalizeBinData(Map<String, dynamic> raw) {
     };
   } else if (winnersRaw is List) {
     final list = winnersRaw.cast<dynamic>();
-    String first = list.isNotEmpty ? toStr(getMap(list[0])['name'] ?? list[0]) : '';
-    String second = list.length > 1 ? toStr(getMap(list[1])['name'] ?? list[1]) : '';
+    String first =
+        list.isNotEmpty ? toStr(getMap(list[0])['name'] ?? list[0]) : '';
+    String second =
+        list.length > 1 ? toStr(getMap(list[1])['name'] ?? list[1]) : '';
     lastWinner = {
       'first': first,
       'second': second,
@@ -743,7 +794,8 @@ Map<String, dynamic> _normalizeBinData(Map<String, dynamic> raw) {
   }).toList();
 
   // coaching
-  final coachingSrc = raw['coaching'] ?? getMap(raw['events'])['coaching'] ?? [];
+  final coachingSrc =
+      raw['coaching'] ?? getMap(raw['events'])['coaching'] ?? [];
   final coaching = toListOfMap(coachingSrc).map((c) {
     final date = toStr(c['date'] ?? c['day'] ?? '');
     final time = toStr(c['time'] ?? c['start'] ?? '');
@@ -763,6 +815,7 @@ Map<String, dynamic> _normalizeBinData(Map<String, dynamic> raw) {
 
   return {
     'memberCount': memberCount,
+    'appVersion': raw['appVersion'] ?? Config.appVersion,
     'socials': socials,
     'tournament': tournament,
     'lastWinner': lastWinner,
@@ -2829,12 +2882,12 @@ class _SettingsPageState extends State<SettingsPage> {
                               fontWeight: FontWeight.bold)),
                       SizedBox(height: 4),
                       Text('Version ${Config.appVersion}',
-                          style: TextStyle(
-                              color: Colors.white54, fontSize: 12)),
+                          style:
+                              TextStyle(color: Colors.white54, fontSize: 12)),
                       SizedBox(height: 8),
                       Text(Config.copyright,
-                          style: TextStyle(
-                              color: Colors.white38, fontSize: 11)),
+                          style:
+                              TextStyle(color: Colors.white38, fontSize: 11)),
                     ],
                   ),
                 ),
